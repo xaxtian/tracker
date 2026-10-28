@@ -1,0 +1,133 @@
+<header class="page-head">
+  <a routerLink="/" class="back" aria-label="Volver">←</a>
+  <h1>{{ info.icon }} {{ info.name }}</h1>
+</header>
+
+<section class="stage" [class.mirror]="facing() === 'user'" [class.live]="status() === 'running'">
+  <video #video playsinline muted></video>
+  <canvas #canvas></canvas>
+
+  @if (status() === 'running') {
+    <div class="hud-count" [class.dim]="!inSet()">
+      <span class="big">{{ valid() }}</span>
+      @if (invalid() > 0) {
+        <span class="bad">✗ {{ invalid() }}</span>
+      }
+    </div>
+    <div class="hud-set">
+      @if (inSet()) {
+        <span class="pill on">Serie {{ setNumber() }}</span>
+      } @else if (restSec() !== null) {
+        <span class="pill rest">Descanso {{ formatRest(restSec()!) }}</span>
+      } @else {
+        <span class="pill">Esperando</span>
+      }
+    </div>
+    <!-- @for with track by id re-creates the toast so its animation replays -->
+    @for (r of lastRepList(); track r.id) {
+      <div class="toast" [class.ok]="r.ok" [class.ko]="!r.ok">{{ r.ok ? '✓' : '✗' }} {{ r.text }}</div>
+    }
+    @for (b of setBannerList(); track b.id) {
+      <div class="set-banner">
+        <strong>{{ b.title }}</strong>
+        <span>{{ b.detail }}</span>
+      </div>
+    }
+    @if (recording()) {
+      <div class="rec">● REC {{ formatClock(recSec()) }}</div>
+    }
+    @if (hint()) {
+      <div class="hint">{{ hint() }}</div>
+    }
+  } @else {
+    <div class="placeholder">
+      @switch (status()) {
+        @case ('loading') {
+          <p>Cargando modelo y cámara…</p>
+        }
+        @case ('error') {
+          <p class="err">{{ error() }}</p>
+          <button class="btn primary" (click)="start()">Reintentar</button>
+        }
+        @default {
+          <ul class="tips">
+            @for (t of info.tips; track t) {
+              <li>{{ t }}</li>
+            }
+          </ul>
+          <button class="btn primary big" (click)="start()">Iniciar cámara</button>
+        }
+      }
+    </div>
+  }
+</section>
+
+<div class="camera-bar">
+  <div class="seg" role="group" aria-label="Cámara">
+    <button [class.active]="facing() === 'user'" (click)="facing() !== 'user' && switchCamera()">🤳 Frontal</button>
+    <button [class.active]="facing() === 'environment'" (click)="facing() !== 'environment' && switchCamera()">📷 Trasera</button>
+  </div>
+  @if (cameras().length > 2) {
+    <select aria-label="Elegir cámara" [value]="deviceId() ?? ''" (change)="selectCamera($any($event.target).value)">
+      @if (!deviceId()) {
+        <option value="" selected>Elegir cámara…</option>
+      }
+      @for (c of cameras(); track c.deviceId; let i = $index) {
+        <option [value]="c.deviceId" [selected]="c.deviceId === deviceId()">{{ c.label || 'Cámara ' + (i + 1) }}</option>
+      }
+    </select>
+  }
+</div>
+
+@if (status() === 'running') {
+  <div class="controls">
+    @if (canRecord) {
+      <button class="btn" [class.recording]="recording()" (click)="toggleRecording()">
+        {{ recording() ? '■ Parar grabación' : '⏺ Grabar' }}
+      </button>
+    }
+    <button class="btn" (click)="endSet()" [disabled]="!inSet()">Terminar serie</button>
+    <button class="btn danger" (click)="stop()">Parar</button>
+  </div>
+
+  @if (settings().general.showAngles) {
+    <div class="metrics">
+      @for (m of metrics() | keyvalue: noSort; track m.key) {
+        <span><b>{{ m.key }}</b> {{ m.value | number: '1.0-0' }}</span>
+      }
+    </div>
+  }
+}
+
+@if (lastRecording(); as rec) {
+  <div class="saved">
+    🎬 Vídeo guardado ({{ formatClock(rec.durationSec) }})
+    <a class="btn primary" [routerLink]="['/videos', rec.id]">Ver vídeo</a>
+  </div>
+}
+
+<section class="card">
+  <h2>Series de hoy en esta sesión</h2>
+  @if (sessionSets().length === 0) {
+    <p class="muted">Aún no hay series. Empieza a moverte: la serie arranca sola con la primera repetición.</p>
+  } @else {
+    <table class="sets">
+      <thead>
+        <tr><th>#</th><th>Válidas</th><th>No válidas</th><th>Descanso previo</th></tr>
+      </thead>
+      <tbody>
+        @for (s of sessionSets(); track s.id; let i = $index) {
+          <tr>
+            <td>{{ i + 1 }}</td>
+            <td class="ok">{{ s.valid }}</td>
+            <td [class.ko]="s.invalid > 0" [title]="reasonsOf(s)">{{ s.invalid }}</td>
+            <td>{{ s.restBeforeSec !== null ? formatRest(s.restBeforeSec) : '—' }}</td>
+          </tr>
+          @if (s.invalid > 0) {
+            <tr class="reasons"><td></td><td colspan="3">{{ reasonsOf(s) }}</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  }
+</section>

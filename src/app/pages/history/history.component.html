@@ -1,0 +1,84 @@
+<h1>Historial</h1>
+
+<div class="records">
+  @for (f of exerciseIds; track f) {
+    <div class="record">
+      <span>{{ ex[f].icon }} {{ ex[f].name }}</span>
+      <b>{{ records()[f] ?? 0 }}</b>
+      <small>mejor serie</small>
+    </div>
+  }
+</div>
+
+<div class="chips">
+  @for (f of filters; track f) {
+    <button class="chip" [class.active]="filter() === f" (click)="filter.set(f)">{{ label(f) }}</button>
+  }
+</div>
+
+@if (days().length === 0) {
+  <p class="muted">Todavía no hay series guardadas.</p>
+}
+
+@for (d of days(); track d.day) {
+  <section class="card">
+    <h2>{{ d.day | date: 'EEEE d MMMM y' }}</h2>
+    @for (g of d.groups; track g.exercise) {
+      <div class="group">
+        <div class="group-head">
+          <span>{{ ex[g.exercise].icon }} {{ ex[g.exercise].name }}</span>
+          <span class="muted">
+            {{ g.sets.length }} series · <b class="ok">{{ g.valid }}</b> válidas
+            @if (g.invalid) { · <span class="ko">{{ g.invalid }}</span> no válidas }
+            · mejor {{ g.best }}
+          </span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Hora</th><th>Válidas</th><th>No válidas</th><th>Duración</th><th>Descanso</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (s of g.sets; track s.id) {
+              <tr>
+                <td>{{ s.start | date: 'HH:mm' }}</td>
+                <td class="ok">{{ s.valid }}</td>
+                <td [class.ko]="s.invalid > 0">{{ s.invalid }}</td>
+                <td>{{ duration(s) }}</td>
+                <td>{{ rest(s.restBeforeSec) }}</td>
+                <td class="row-acts">
+                  @if (s.recordingId && videoIds().has(s.recordingId)) {
+                    <button class="icon-btn" (click)="play(s)" aria-label="Ver vídeo de la serie">▶</button>
+                  }
+                  <button class="icon-btn" (click)="remove(s)" aria-label="Borrar serie">🗑</button>
+                </td>
+              </tr>
+              @if (s.invalid > 0) {
+                <tr class="reasons"><td></td><td colspan="5">{{ reasons(s) }}</td></tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}
+
+@if (playing(); as p) {
+  <div class="modal-backdrop" (click)="closePlayer()">
+    <div class="modal" role="dialog" aria-modal="true" [attr.aria-label]="'Vídeo de ' + ex[p.meta.exercise].name" (click)="$event.stopPropagation()">
+      <header class="modal-head">
+        <div>
+          <b>{{ ex[p.meta.exercise].icon }} {{ ex[p.meta.exercise].name }}</b>
+          <small class="muted">{{ p.set.start | date: "EEEE d MMMM, HH:mm" }} · {{ p.set.valid }} válidas</small>
+        </div>
+        <button class="close" (click)="closePlayer()" aria-label="Cerrar">✕</button>
+      </header>
+      <app-recording-player [meta]="p.meta" [startAt]="p.set.videoOffsetSec ?? 0" [autoplay]="true" />
+    </div>
+  </div>
+}
+
+<div class="actions">
+  <button class="btn" (click)="exportJson()">Exportar JSON</button>
+  <button class="btn danger" (click)="clearAll()">Borrar todo</button>
+</div>

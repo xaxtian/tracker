@@ -1,0 +1,46 @@
+<h1>Ajustes</h1>
+<p class="muted">Los cambios se guardan al momento y se aplican también durante el entrenamiento.</p>
+
+@for (sec of sections; track sec.id) {
+  <section class="card">
+    <button class="sec-head" (click)="open.set(sec.id)" [attr.aria-expanded]="open() === sec.id">
+      <h2>{{ sec.title }}</h2>
+      <span>{{ open() === sec.id ? '▾' : '▸' }}</span>
+    </button>
+
+    @if (open() === sec.id) {
+      @for (f of sec.fields; track f.key) {
+        @if (!f.when || f.when(settings())) {
+          <div class="field">
+            <div class="row">
+              <label [for]="sec.id + f.key">{{ f.label }}</label>
+              @switch (f.type) {
+                @case ('range') {
+                  <output>{{ display(sec.id, f) }}</output>
+                }
+                @case ('toggle') {
+                  <input type="checkbox" class="switch" [id]="sec.id + f.key" [checked]="value(sec.id, f.key)"
+                    (change)="set(sec.id, f.key, $any($event.target).checked, f)" />
+                }
+                @case ('select') {
+                  <select [id]="sec.id + f.key" [value]="value(sec.id, f.key)"
+                    (change)="set(sec.id, f.key, $any($event.target).value, f)">
+                    @for (o of f.options; track o.value) {
+                      <option [value]="o.value" [selected]="o.value === value(sec.id, f.key)">{{ o.label }}</option>
+                    }
+                  </select>
+                }
+              }
+            </div>
+            @if (f.type === 'range') {
+              <input type="range" [id]="sec.id + f.key" [min]="f.min" [max]="f.max" [step]="f.step"
+                [value]="value(sec.id, f.key)" (input)="set(sec.id, f.key, $any($event.target).value, f)" />
+            }
+            <small>{{ f.help }}</small>
+          </div>
+        }
+      }
+      <button class="btn" (click)="reset(sec.id)">Restaurar valores por defecto</button>
+    }
+  </section>
+}
