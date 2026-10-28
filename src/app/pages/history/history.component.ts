@@ -3,7 +3,8 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { TempoAverages, fmt2, fmtLoad, tempoAverages, velocityLoss } from '../../analysis/set-stats';
 import { RecordingMeta, VideoStoreService } from '../../services/video-store.service';
 import { RecordingPlayerComponent } from '../videos/recording-player.component';
-import { EXERCISES, ExerciseId, FAULT_MESSAGES, PAUSE_LABELS, SetRecord } from '../../models/types';
+import { EXERCISES, EXERCISE_IDS, FAULT_MESSAGES, PAUSE_LABELS, isExerciseId, sideLabel } from '../../exercises';
+import { ExerciseId, SetRecord } from '../../models/types';
 import { HistoryService } from '../../services/history.service';
 
 /** Sets of one exercise on one day, with totals. */
@@ -42,14 +43,22 @@ export class HistoryComponent implements OnDestroy {
   readonly ex = EXERCISES;
   /** Exercise filter. */
   readonly filter = signal<ExerciseId | 'all'>('all');
-  readonly exerciseIds: ExerciseId[] = ['squat', 'pushup', 'pullup'];
-  readonly filters: (ExerciseId | 'all')[] = ['all', ...this.exerciseIds];
+  /** Sets of known exercises (ignores data from exercises that no longer exist). */
+  private readonly sets = computed(() => this.history.sets().filter((s) => isExerciseId(s.exercise)));
+  /** Exercises with at least one set, in registry order. */
+  readonly trained = computed<ExerciseId[]>(() => {
+    const done = new Set(this.sets().map((s) => s.exercise));
+    return EXERCISE_IDS.filter((id) => done.has(id));
+  });
+  /** Filter chips: everything, then each trained exercise. */
+  readonly filters = computed<(ExerciseId | 'all')[]>(() => ['all', ...this.trained()]);
+  readonly sideLabel = sideLabel;
 
   /** Sets grouped by day (newest first) and exercise. */
   readonly days = computed<DayGroup[]>(() => {
     const f = this.filter();
     const byDay = new Map<number, Map<ExerciseId, SetRecord[]>>();
-    for (const s of this.history.sets()) {
+    for (const s of this.sets()) {
       if (f !== 'all' && s.exercise !== f) continue;
       const d = new Date(s.start);
       d.setHours(0, 0, 0, 0);
@@ -74,7 +83,7 @@ export class HistoryComponent implements OnDestroy {
   /** Best set (valid reps) per exercise. */
   readonly records = computed(() => {
     const best: Partial<Record<ExerciseId, number>> = {};
-    for (const s of this.history.sets()) best[s.exercise] = Math.max(best[s.exercise] ?? 0, s.valid);
+    for (const s of this.sets()) best[s.exercise] = Math.max(best[s.exercise] ?? 0, s.valid);
     return best;
   });
 

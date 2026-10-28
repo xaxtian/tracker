@@ -25,7 +25,7 @@ flowchart LR
 
 | Ruta | Componente | Qué hace |
 |---|---|---|
-| `/` | [HomeComponent](../components/HomeComponent.html) | Tarjetas de los tres ejercicios con las repeticiones válidas de hoy |
+| `/` | [HomeComponent](../components/HomeComponent.html) | Ejercicios por categoría (Piernas, Empuje, Tracción, Brazos, Core) con las repeticiones válidas de hoy |
 | `/workout/:exercise` | [WorkoutComponent](../components/WorkoutComponent.html) | Cámara, contador, series, peso/lastre, tempo y grabación |
 | `/history` | [HistoryComponent](../components/HistoryComponent.html) | Series por día y ejercicio, detalle por repetición, corregir peso, ver vídeo |
 | `/videos` | [VideosComponent](../components/VideosComponent.html) | Lista de vídeos guardados y espacio usado |
@@ -59,11 +59,12 @@ Lo que se ve en pantalla:
   verde (profundidad alcanzada), rojo (fallo de técnica). Ver [poseColor](../miscellaneous/functions.html#poseColor).
 - **Panel «Última repetición»**: excéntrica, concéntrica, pausas, velocidades y pérdida de velocidad de la serie.
 - **Peso / lastre**: botones −/+ de 2,5 kg; negativo = asistencia. Se recuerda por ejercicio.
+- **Brazo trabajado** en el curl unilateral, durante la serie y en la tabla de series.
 - **Cámara frontal/trasera** y selector de cámara cuando hay más de dos.
 
 ## Historial
 
-- Récord (mejor serie) por ejercicio y filtros.
+- Récord (mejor serie) y filtro de cada ejercicio que hayas entrenado.
 - Series agrupadas por **día** y **ejercicio**, con hora, peso, válidas, no válidas, velocidad media, pérdida de
   velocidad y descanso previo.
 - Al tocar una serie se despliega cada repetición con sus tiempos, y un campo para **corregir el peso**.

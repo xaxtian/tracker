@@ -1,7 +1,7 @@
 <h1>Historial</h1>
 
 <div class="records">
-  @for (f of exerciseIds; track f) {
+  @for (f of trained(); track f) {
     <div class="record">
       <span>{{ ex[f].icon }} {{ ex[f].name }}</span>
       <b>{{ records()[f] ?? 0 }}</b>
@@ -11,7 +11,7 @@
 </div>
 
 <div class="chips">
-  @for (f of filters; track f) {
+  @for (f of filters(); track f) {
     <button class="chip" [class.active]="filter() === f" (click)="filter.set(f)">{{ label(f) }}</button>
   }
 </div>
@@ -41,7 +41,7 @@
             @for (s of g.sets; track s.id) {
               <tr class="set-row" [class.open]="expanded() === s.id" (click)="toggle(s)"
                   [attr.aria-expanded]="expanded() === s.id" title="Ver detalle de cada repetición">
-                <td><span class="caret">{{ expanded() === s.id ? '▾' : '▸' }}</span> {{ s.start | date: 'HH:mm' }}</td>
+                <td><span class="caret">{{ expanded() === s.id ? '▾' : '▸' }}</span> {{ s.start | date: 'HH:mm' }}@if (s.side) {<small class="side"> {{ s.side === 'L' ? 'izq.' : 'der.' }}</small>}</td>
                 <td class="load">{{ fmtLoad(s.loadKg) || '—' }}</td>
                 <td class="ok">{{ s.valid }}</td>
                 <td [class.ko]="s.invalid > 0">{{ s.invalid }}</td>
@@ -124,7 +124,7 @@
       <header class="modal-head">
         <div>
           <b>{{ ex[p.meta.exercise].icon }} {{ ex[p.meta.exercise].name }} {{ fmtLoad(p.set.loadKg) }}</b>
-          <small class="muted">{{ p.set.start | date: "EEEE d MMMM, HH:mm" }} · {{ p.set.valid }} válidas</small>
+          <small class="muted">{{ p.set.start | date: "EEEE d MMMM, HH:mm" }} · {{ p.set.valid }} válidas@if (p.set.side) { · {{ sideLabel(p.set.exercise, p.set.side) }}}</small>
         </div>
         <button class="close" (click)="closePlayer()" aria-label="Cerrar">✕</button>
       </header>

@@ -18,7 +18,7 @@ sequenceDiagram
   W->>P: detect(video, hora)
   P-->>W: 33 puntos normalizados
   W->>W: a píxeles y suavizado
-  W->>A: evaluate(puntos, ajustes)
+  W->>A: evaluate(puntos, ajustes del ejercicio, generales)
   A-->>W: FrameEval con ángulo, extendido, profundidad, fallos
   W->>R: update(eval, puntos, hora, opciones)
   R-->>W: repetición terminada o nada
@@ -49,7 +49,7 @@ muñecas 15-16, caderas 23-24, rodillas 25-26, tobillos 27-28, talones 29-30, pu
 
 ## 3. Evaluación del fotograma
 
-El *analyzer* del ejercicio ([createAnalyzer](../miscellaneous/functions.html#createAnalyzer)) convierte los puntos
+El *analyzer* del módulo del ejercicio ([Añadir un ejercicio](añadir-un-ejercicio.html)) convierte los puntos
 en un [FrameEval](../interfaces/FrameEval.html):
 
 | Campo | Significado |

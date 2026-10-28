@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { EXERCISES } from '../../models/types';
+import { EXERCISES } from '../../exercises';
 import { RecordingMeta, VideoStoreService, formatBytes, formatClock } from '../../services/video-store.service';
 import { RecordingPlayerComponent } from './recording-player.component';
 

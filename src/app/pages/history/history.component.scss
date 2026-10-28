@@ -1,6 +1,6 @@
 .records {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -46,6 +46,7 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .vel { color: var(--accent); font-weight: 600; }
 .warn { color: #f59e0b; font-weight: 700; }
 .load { white-space: nowrap; font-weight: 600; }
+.side { color: var(--muted); white-space: nowrap; }
 .edit-load {
   display: flex;
   flex-wrap: wrap;

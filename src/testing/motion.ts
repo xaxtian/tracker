@@ -1,4 +1,4 @@
-import { FrameEval } from '../app/analysis/analyzers';
+import { FrameEval } from '../app/analysis/analyzer';
 
 /** Smooth 0..1 profile with constant-speed middle (trapezoidal velocity). */
 export function trapezoid(x: number): number {

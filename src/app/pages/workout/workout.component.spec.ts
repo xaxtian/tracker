@@ -207,21 +207,71 @@ describe('WorkoutComponent', () => {
       expect(el.querySelector('.sets .reasons')?.textContent).toContain('Tronco demasiado inclinado ×2');
     });
 
-    it('ends sets differently for each exercise', () => {
-      expect(priv().endRules()).toEqual({ offPositionSec: 2, inactivitySec: 10 });
+    it.each([
+      ['squat', 10], ['pushup', 30], ['pullup', null],
+      ['dips', 10], ['pike', 30], ['hspu', null], ['row', null], ['curl', 10], ['curlSingle', 10], ['legRaise', null],
+    ] as const)('ends %s sets after %s s of inactivity (null = only by leaving)', (id, inactivity) => {
       f.destroy();
       TestBed.resetTestingModule();
-      setup('pushup');
-      expect(priv().endRules().inactivitySec).toBe(30);
-      f.destroy();
-      TestBed.resetTestingModule();
-      setup('pullup');
-      expect(priv().endRules().inactivitySec).toBeNull();
+      setup(id);
+      expect(priv().endRules()).toEqual({ offPositionSec: 2, inactivitySec: inactivity });
     });
 
     it('formats the rest time', () => {
       expect(c.formatRest(0)).toBe('0:00');
       expect(c.formatRest(95)).toBe('1:35');
+    });
+  });
+
+  describe('exercise modules', () => {
+    const rep = (): RepResult => ({ valid: true, reasons: [], start: Date.now(), end: Date.now() + 2000 });
+    const seeSide = (side: 'L' | 'R') => ((c as unknown as { lastSide: string }).lastSide = side);
+
+    it('takes its texts from the module', () => {
+      setup('dips');
+      expect(el.querySelector('h1')?.textContent).toBe('🔻 Fondos en paralelas');
+      expect(el.querySelector('.tips')?.textContent).toContain('altura de las barras');
+      expect(c.pauseLabels).toEqual({ turn: 'Pausa abajo', between: 'Pausa arriba' });
+    });
+
+    it('uses the module hints to guide the person into position', () => {
+      setup('row');
+      const hintFor = (ev: object) => (c as unknown as { hintFor(d: boolean, e: object): string }).hintFor(true, ev);
+      expect(hintFor({ ok: true, inPosition: false })).toBe('Cuélgate bajo la barra con el cuerpo recto');
+      expect(hintFor({ ok: true, inPosition: true })).toBe('Estira los brazos del todo para empezar');
+    });
+
+    it('records the trained arm of a unilateral curl', () => {
+      setup('curlSingle');
+      seeSide('L');
+      priv().onRep(rep());
+      expect(c.sideText()).toBe('brazo izquierdo');
+      c.endSet();
+      const [set] = TestBed.inject(HistoryService).sets();
+      expect(set.side).toBe('L');
+      expect(c.setBanner()?.detail).toBe('brazo izquierdo · 1 válida');
+      expect(c.sideText()).toBe('');
+    });
+
+    it('starts a new set when switching arms', () => {
+      setup('curlSingle');
+      seeSide('L');
+      priv().onRep(rep());
+      priv().onRep(rep());
+      seeSide('R');
+      priv().onRep(rep());
+      expect(TestBed.inject(HistoryService).sets().map((s) => [s.side, s.valid])).toEqual([['L', 2]]);
+      expect(c.sideText()).toBe('brazo derecho');
+      expect(c.valid()).toBe(1);
+    });
+
+    it('does not record a side for two-arm exercises', () => {
+      setup('curl');
+      seeSide('L');
+      priv().onRep(rep());
+      c.endSet();
+      expect(TestBed.inject(HistoryService).sets()[0].side).toBeUndefined();
+      expect(c.sideText()).toBe('');
     });
   });
 

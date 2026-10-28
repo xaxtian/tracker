@@ -2,14 +2,13 @@ import { Component, ElementRef, OnDestroy, computed, inject, signal, viewChild }
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DecimalPipe, KeyValuePipe } from '@angular/common';
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
-import { Analyzer, FrameEval, createAnalyzer } from '../../analysis/analyzers';
+import { Analyzer, FrameEval } from '../../analysis/analyzer';
 import { BANNER_MS, HudState, drawPose, poseColor } from '../../analysis/overlay';
 import { RepCounter, RepOptions } from '../../analysis/rep-counter';
 import { fmt2, fmtLoad, tempoText, velocityLoss } from '../../analysis/set-stats';
 import { SetEndRules, SetTracker } from '../../analysis/set-tracker';
-import {
-  AppSettings, EXERCISES, ExerciseId, FAULT_MESSAGES, FAULT_VOICE, PAUSE_LABELS, Pt, RepResult, RepTempo, SetRecord,
-} from '../../models/types';
+import { Exercise, FAULT_MESSAGES, FAULT_VOICE, getExercise, isExerciseId, sideLabel } from '../../exercises';
+import { AppSettings, ExerciseId, Pt, RepResult, RepTempo, SetRecord } from '../../models/types';
 import { FeedbackService } from '../../services/feedback.service';
 import { HistoryService } from '../../services/history.service';
 import { PoseService } from '../../services/pose.service';
@@ -49,7 +48,8 @@ export class WorkoutComponent implements OnDestroy {
   readonly settings = this.settingsSvc.settings;
 
   readonly exercise: ExerciseId;
-  readonly info: (typeof EXERCISES)[ExerciseId];
+  /** The exercise module: texts, settings, set-end rule and analyzer. */
+  readonly info: Exercise;
 
   private videoRef = viewChild.required<ElementRef<HTMLVideoElement>>('video');
   private canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -112,6 +112,8 @@ export class WorkoutComponent implements OnDestroy {
   /** Extra load (kg) saved with each set; remembered per exercise. */
   readonly loadKg = signal(0);
   readonly fmtLoad = fmtLoad;
+  /** Side trained in the current set of a unilateral exercise ("brazo izquierdo"…). */
+  readonly sideText = signal('');
 
   private analyzer: Analyzer;
   private counter: RepCounter;
@@ -132,14 +134,17 @@ export class WorkoutComponent implements OnDestroy {
   private toastAt = 0;
   private bannerAt = 0;
   private bannerTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Side seen in the last analysed frame, and the side of the current set (unilateral exercises). */
+  private lastSide: 'L' | 'R' | undefined;
+  private setSide: 'L' | 'R' | undefined;
 
   constructor() {
-    const id = inject(ActivatedRoute).snapshot.paramMap.get('exercise') as ExerciseId;
-    this.exercise = id in EXERCISES ? id : 'squat';
-    if (!(id in EXERCISES)) void this.router.navigate(['/']);
-    this.info = EXERCISES[this.exercise];
-    this.pauseLabels = PAUSE_LABELS[this.exercise];
-    this.analyzer = createAnalyzer(this.exercise);
+    const id = inject(ActivatedRoute).snapshot.paramMap.get('exercise');
+    this.exercise = isExerciseId(id) ? id : 'squat';
+    if (!isExerciseId(id)) void this.router.navigate(['/']);
+    this.info = getExercise(this.exercise);
+    this.pauseLabels = this.info.pauseLabels;
+    this.analyzer = this.info.createAnalyzer();
     this.counter = new RepCounter(this.analyzer);
     this.tracker = new SetTracker(this.exercise);
     // Rear camera is more practical on a phone propped up in front of you.
@@ -430,7 +435,8 @@ export class WorkoutComponent implements OnDestroy {
 
     let ev: FrameEval | null = null;
     if (lm) {
-      ev = this.analyzer.evaluate(lm, s);
+      ev = this.analyzer.evaluate(lm, s[this.exercise], s.general);
+      if (ev.ok && ev.side) this.lastSide = ev.side;
       const rep = this.counter.update(ev, lm, now, this.repOptions(s));
       if (rep) this.onRep(rep);
     }
@@ -479,19 +485,21 @@ export class WorkoutComponent implements OnDestroy {
   /** When a set ends for this exercise (see the guide, "Series automáticas"). */
   private endRules(): SetEndRules {
     const g = this.settings().general;
-    switch (this.exercise) {
-      case 'squat':
-        return { offPositionSec: g.offPositionSec, inactivitySec: g.restTimeoutSec };
-      case 'pushup':
-        return { offPositionSec: g.offPositionSec, inactivitySec: g.restTimeoutSec * 3 };
-      case 'pullup':
-        return { offPositionSec: g.offPositionSec, inactivitySec: null };
-    }
+    const inactivity = { inactivity: g.restTimeoutSec, longInactivity: g.restTimeoutSec * 3, offPosition: null };
+    return { offPositionSec: g.offPositionSec, inactivitySec: inactivity[this.info.setEnd] };
   }
 
   /** Updates counters and gives feedback for a finished rep. */
   private onRep(rep: RepResult): void {
+    // Unilateral exercise: switching sides starts a new set.
+    if (this.info.unilateral && this.tracker.active && this.lastSide && this.setSide && this.lastSide !== this.setSide) {
+      this.endSet();
+    }
     const newSet = !this.tracker.active;
+    if (newSet && this.info.unilateral) {
+      this.setSide = this.lastSide;
+      this.sideText.set(sideLabel(this.exercise, this.setSide));
+    }
     this.tracker.addRep(rep);
     if (newSet) {
       this.inSet.set(true);
@@ -526,15 +534,17 @@ export class WorkoutComponent implements OnDestroy {
     this.inSet.set(false);
     const index = this.sessionSets().length + 1;
     if (this.loadKg()) set.loadKg = this.loadKg();
+    if (this.info.unilateral && this.setSide) set.side = this.setSide;
+    this.sideText.set('');
     if (this.recorder) {
       set.recordingId = this.recorder.meta.id;
       set.videoOffsetSec = this.recorder.markSet(set, index);
     }
     const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
-    const load = fmtLoad(set.loadKg);
+    const extra = [sideLabel(this.exercise, set.side), fmtLoad(set.loadKg)].filter(Boolean).join(' · ');
     this.showBanner(
       `Serie ${index} terminada`,
-      (load ? `${load} · ` : '') +
+      (extra ? `${extra} · ` : '') +
         plural(set.valid, 'válida') + (set.invalid ? ` · ${set.invalid} no ${set.invalid === 1 ? 'válida' : 'válidas'}` : ''),
     );
     this.history.add(set);
@@ -555,7 +565,7 @@ export class WorkoutComponent implements OnDestroy {
     const r = this.lastRep();
     const b = this.setBanner();
     return {
-      title: [this.info.name, fmtLoad(this.loadKg())].filter(Boolean).join(' '),
+      title: [this.info.name, this.sideText(), fmtLoad(this.loadKg())].filter(Boolean).join(' '),
       valid: this.valid(),
       invalid: this.invalid(),
       inSet: this.inSet(),
@@ -572,14 +582,11 @@ export class WorkoutComponent implements OnDestroy {
   private hintFor(detected: boolean, ev: FrameEval | null): string {
     if (!detected) return 'No te veo. Colócate delante de la cámara.';
     if (!ev?.ok) return 'No se ven bien tus articulaciones. Aléjate o mejora la luz.';
-    if (!ev.inPosition) {
-      return this.exercise === 'pullup' ? 'Cuélgate de la barra' : 'Ponte en plancha con el cuerpo entero visible';
-    }
-    if (this.counter.phase === 'idle') {
-      return this.exercise === 'squat' ? 'Ponte de pie con las piernas estiradas' : 'Estira los brazos del todo para empezar';
-    }
+    if (!ev.inPosition) return this.info.hints.position;
+    if (this.counter.phase === 'idle') return this.info.hints.start;
     return '';
   }
+
 
   /** MediaPipe landmarks (0..1) to video pixels, with exponential smoothing. */
   private toPixels(raw: NormalizedLandmark[], w: number, h: number, smoothing: number): Pt[] {

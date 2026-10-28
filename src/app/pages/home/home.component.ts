@@ -1,9 +1,9 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { EXERCISES, ExerciseId } from '../../models/types';
+import { EXERCISES_BY_CATEGORY, ExerciseId } from '../../exercises';
 import { HistoryService } from '../../services/history.service';
 
-/** Home page: one card per exercise with today's valid reps. */
+/** Home page: the exercises grouped by category, each with today's valid reps. */
 @Component({
   selector: 'app-home',
   imports: [RouterLink],
@@ -13,33 +13,38 @@ import { HistoryService } from '../../services/history.service';
       Solo cuentan las repeticiones estrictas. Las series se detectan solas: empiezan con la primera
       repetición y terminan cuando descansas o te bajas de la barra.
     </p>
-    <div class="grid">
-      @for (ex of exercises; track ex.id) {
-        <a class="exercise" [routerLink]="['/workout', ex.id]">
-          <span class="icon">{{ ex.icon }}</span>
-          <span class="name">{{ ex.name }}</span>
-          <span class="today">Hoy: {{ today()[ex.id] ?? 0 }} válidas</span>
-        </a>
-      }
-    </div>
+    @for (g of groups; track g.category) {
+      <h2 class="category">{{ g.category }}</h2>
+      <div class="grid">
+        @for (ex of g.exercises; track ex.id) {
+          <a class="exercise" [routerLink]="['/workout', ex.id]">
+            <span class="icon">{{ ex.icon }}</span>
+            <span class="name">{{ ex.name }}</span>
+            <span class="today">Hoy: {{ today()[ex.id] ?? 0 }} válidas</span>
+          </a>
+        }
+      </div>
+    }
   `,
   styles: `
     .title { margin: 8px 0 4px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+    .category { margin: 20px 0 8px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
     .exercise {
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
-      padding: 24px 12px; border-radius: 16px; background: var(--card); border: 1px solid var(--line);
+      display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+      padding: 16px 10px; border-radius: 16px; background: var(--card); border: 1px solid var(--line);
       color: var(--text); text-decoration: none; transition: transform .1s, border-color .1s;
       &:hover { border-color: var(--accent); transform: translateY(-2px); }
     }
-    .icon { font-size: 48px; }
-    .name { font-size: 20px; font-weight: 700; }
+    .icon { font-size: 40px; }
+    .name { font-size: 17px; font-weight: 700; }
     .today { font-size: 13px; color: var(--muted); }
   `,
 })
 export class HomeComponent {
   private history = inject(HistoryService);
-  readonly exercises = (Object.keys(EXERCISES) as ExerciseId[]).map((id) => ({ id, ...EXERCISES[id] }));
+  /** Exercise cards by category. */
+  readonly groups = EXERCISES_BY_CATEGORY;
 
   /** Valid reps per exercise since midnight. */
   readonly today = computed(() => {

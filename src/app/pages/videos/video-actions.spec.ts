@@ -23,6 +23,9 @@ describe('video actions', () => {
   it('names the file after the exercise and the date', () => {
     expect(recordingFileName(recordingMeta('r', { exercise: 'pullup' }))).toBe('trackbody_dominadas_2026-10-28_18-05.webm');
     expect(recordingFileName(recordingMeta('r', { mime: 'video/mp4' }))).toMatch(/\.mp4$/);
+    // No accents or spaces in file names.
+    expect(recordingFileName(recordingMeta('r', { exercise: 'curlSingle' }))).toBe('trackbody_curl-de-biceps-unilateral_2026-10-28_18-05.webm');
+    expect(recordingFileName(recordingMeta('r', { exercise: 'dips' }))).toMatch(/^trackbody_fondos-en-paralelas_/);
   });
 
   it('downloads through a temporary link', async () => {

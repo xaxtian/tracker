@@ -15,6 +15,7 @@ classDiagram
     +Record reasons
     +number restBeforeSec
     +number loadKg
+    +string side
     +string recordingId
     +number videoOffsetSec
   }
@@ -61,7 +62,7 @@ classDiagram
   RecordingMeta "1" -- "1..*" Chunk : trozos
 </pre>
 
-Campos opcionales: `loadKg` (sin él, peso corporal), `reps` (las series anteriores a la medición del tempo no lo
+Campos opcionales: `loadKg` (sin él, peso corporal), `side` (`L`/`R`, solo en ejercicios unilaterales), `reps` (las series anteriores a la medición del tempo no lo
 tienen), `recordingId` y `videoOffsetSec` (solo si se grababa), `tempo` en cada repetición.
 Ver [SetRecord](../interfaces/SetRecord.html), [RepRecord](../interfaces/RepRecord.html),
 [RepTempo](../interfaces/RepTempo.html) y [RecordingMeta](../interfaces/RecordingMeta.html).
@@ -71,7 +72,7 @@ Ver [SetRecord](../interfaces/SetRecord.html), [RepRecord](../interfaces/RepReco
 | Clave | Almacén | Contenido | Servicio |
 |---|---|---|---|
 | `trackbody.history` | localStorage | Lista de series (JSON) | [HistoryService](../injectables/HistoryService.html) |
-| `trackbody.settings` | localStorage | Ajustes (JSON) | [SettingsService](../injectables/SettingsService.html) |
+| `trackbody.settings` | localStorage | Ajustes (JSON): `general` y una sección por ejercicio con su `id` | [SettingsService](../injectables/SettingsService.html) |
 | `trackbody.camera` | localStorage | Última cámara: frontal/trasera e id | `WorkoutComponent` |
 | `trackbody.load` | localStorage | Peso/lastre por ejercicio | `WorkoutComponent` |
 | `trackbody-videos` | IndexedDB | Vídeos: almacenes `meta` y `chunks` | [VideoStoreService](../injectables/VideoStoreService.html) |
@@ -81,6 +82,7 @@ Ver [SetRecord](../interfaces/SetRecord.html), [RepRecord](../interfaces/RepReco
 - Los **ajustes** guardados se mezclan con los valores por defecto al cargar: un ajuste nuevo de una versión posterior
   toma su valor por defecto sin perder los demás.
 - Las **series** antiguas sin `reps` o sin `loadKg` se muestran con «—».
+- Las series de un ejercicio que ya no exista se ignoran al mostrar el historial (siguen en los datos exportados).
 - Si el almacenamiento está lleno o corrupto la app sigue funcionando con los datos en memoria o con valores por
   defecto.
 

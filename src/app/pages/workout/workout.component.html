@@ -22,6 +22,9 @@
       } @else {
         <span class="pill">Esperando</span>
       }
+      @if (sideText()) {
+        <span class="pill load">{{ sideText() }}</span>
+      }
       @if (loadKg()) {
         <span class="pill load">{{ fmtLoad(loadKg()) }}</span>
       }
@@ -164,7 +167,7 @@
       <tbody>
         @for (s of sessionSets(); track s.id; let i = $index) {
           <tr>
-            <td>{{ i + 1 }}</td>
+            <td>{{ i + 1 }}@if (s.side) {<small class="side"> {{ s.side === 'L' ? 'izq.' : 'der.' }}</small>}</td>
             <td class="nowrap">{{ fmtLoad(s.loadKg) || '—' }}</td>
             <td class="ok">{{ s.valid }}</td>
             <td [class.ko]="s.invalid > 0" [title]="reasonsOf(s)">{{ s.invalid }}</td>

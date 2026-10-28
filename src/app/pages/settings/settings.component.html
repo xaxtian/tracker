@@ -10,7 +10,7 @@
 
     @if (open() === sec.id) {
       @for (f of sec.fields; track f.key) {
-        @if (!f.when || f.when(settings())) {
+        @if (shown(sec.id, f)) {
           <div class="field">
             <div class="row">
               <label [for]="sec.id + f.key">{{ f.label }}</label>

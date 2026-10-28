@@ -1,5 +1,5 @@
 import { Pt } from '../models/types';
-import { FrameEval } from './analyzers';
+import { FrameEval } from './analyzer';
 import { CONNECTIONS } from './geometry';
 import { RepPhase } from './rep-counter';
 

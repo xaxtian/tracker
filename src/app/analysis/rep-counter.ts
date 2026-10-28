@@ -1,5 +1,5 @@
 import { Pt, RepResult } from '../models/types';
-import { Analyzer, FrameEval } from './analyzers';
+import { Analyzer, FrameEval } from './analyzer';
 import { Sample, computeTempo } from './tempo';
 
 /** State of the rep counter: waiting for extension, ready at the top, or in the middle of a rep. */
@@ -108,7 +108,12 @@ export class RepCounter {
 
       case 'moving': {
         this.trackFaults(ev, o.faultFrames);
-        this.minAngle = Math.min(this.minAngle, ev.angle);
+        // The rise is measured from the deepest point so far: going on past the
+        // depth threshold is not "coming back up".
+        if (ev.angle < this.minAngle) {
+          this.minAngle = ev.angle;
+          this.peakAfterBottom = ev.angle;
+        }
         if (ev.bottom) this.bottomReached = true;
         if (this.bottomReached) this.peakAfterBottom = Math.max(this.peakAfterBottom, ev.angle);
 

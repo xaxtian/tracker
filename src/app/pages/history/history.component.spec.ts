@@ -46,9 +46,23 @@ describe('HistoryComponent', () => {
   const rowOf = (time: string) => rows().find((r) => r.cells[0].textContent?.includes(time))!;
   const refresh = () => f.detectChanges();
 
-  it('shows the best set per exercise', () => {
-    const records = [...el.querySelectorAll('.record b')].map((b) => b.textContent);
-    expect(records).toEqual(['10', '0', '12']);
+  it('shows the best set of each trained exercise only', () => {
+    const records = [...el.querySelectorAll('.record')].map((r) => [r.querySelector('span')?.textContent, r.querySelector('b')?.textContent]);
+    expect(records).toEqual([['🏋️ Sentadillas', '10'], ['🧗 Dominadas', '12']]);
+    expect([...el.querySelectorAll('.chip')].map((c) => c.textContent)).toEqual(['Todo', 'Sentadillas', 'Dominadas']);
+  });
+
+  it('shows the trained side of unilateral sets', () => {
+    history.add(setRecord('s5', { start: day(28, 19), exercise: 'curlSingle', valid: 10, side: 'L' }));
+    refresh();
+    expect(cells(rowOf('19:00'))[0]).toBe('▸ 19:00 izq.');
+  });
+
+  it('ignores sets of exercises that no longer exist', () => {
+    history.add(setRecord('old', { start: day(28, 20), exercise: 'burpees' as never, valid: 99 }));
+    refresh();
+    expect(rows()).toHaveLength(4);
+    expect(el.textContent).not.toContain('99');
   });
 
   it('groups sets by day (newest first) and exercise', () => {

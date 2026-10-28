@@ -15,9 +15,12 @@ La cobertura también aparece en esta documentación, en *Cobertura de la docume
 
 <pre class="mermaid">
 flowchart LR
+  E["`**Ejercicios** · exercises/
+  un spec por módulo con poses sintéticas
+  contrato del registro`"]
   L["`**Lógica** · analysis/
-  geometry · analyzers · rep-counter
-  tempo · set-tracker · set-stats · overlay`"]
+  geometry · rep-counter · tempo
+  set-tracker · set-stats · overlay`"]
   S["`**Servicios** · services/
   settings · history · feedback · pose
   video-store con IndexedDB · session-recorder`"]
@@ -25,8 +28,9 @@ flowchart LR
   home · workout · history · settings
   videos · video-player · recording-player`"]
   I{{"`**Integración**
-  dos sentadillas simuladas recorren
-  pose → analyzer → contador → serie → historial`"}}
+  una repetición completa de cada ejercicio
+  y dos sentadillas por toda la pantalla`"}}
+  E --> I
   L --> I
   S --> I
   P --> I
@@ -35,7 +39,8 @@ flowchart LR
 | Área | Ejemplos de lo que se comprueba |
 |---|---|
 | Geometría | Ángulos, inclinaciones, lado visible con histéresis |
-| Analizadores | Profundidad, extensión, posición y cada fallo de técnica con poses sintéticas de los 3 ejercicios |
+| Ejercicios | Por módulo: extensión, objetivo, posición, cada fallo y posturas que no deben contar. Registro: cada módulo tiene textos, voz, valores por defecto dentro de sus límites, y fallos sin textos contradictorios |
+| Integración | Una repetición completa de cada uno de los 10 ejercicios cuenta una válida con su tempo; media repetición, ninguna |
 | Contador | Repeticiones válidas, sin profundidad, sin bloqueo, sin inicio, fallos de 2 vs 3 fotogramas, bajada rápida, repetición pendiente |
 | Tempo | Fases con error < 0,08 s a 30 y 60 fps, con ruido, velocidades en m/s, dominadas, casos sin datos |
 | Series | Cierre por posición e inactividad, descanso previo, motivos acumulados |

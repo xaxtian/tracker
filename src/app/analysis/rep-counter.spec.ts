@@ -1,6 +1,6 @@
 import { Pt, RepResult } from '../models/types';
 import { DEFAULT_PLAN, RepPlan, angleAt, evalFor } from '../../testing/motion';
-import { Analyzer, FrameEval } from './analyzers';
+import { Analyzer, FrameEval } from './analyzer';
 import { RepCounter, RepOptions } from './rep-counter';
 
 const T0 = 1e12;
@@ -133,6 +133,14 @@ describe('RepCounter', () => {
     };
     const reps = run(new RepCounter(stubAnalyzer()), (t) => evalFor(path(t)), 6.5);
     expect(reps.map((r) => r.rep.reasons)).toEqual([['noLockout'], ['noStart']]);
+  });
+
+  it('counts one rep when going far past the depth threshold', () => {
+    // Depth is reached at 90° but the rep goes on down to 40°: still one rep.
+    const deep = (t: number) => evalFor(angleAt(t, plan({ bottom: 40 })));
+    const reps = run(new RepCounter(stubAnalyzer()), deep, CYCLE + 1);
+    expect(reps).toHaveLength(1);
+    expect(reps[0].rep.valid).toBe(true);
   });
 
   it('emits the pending rep when the person leaves the position', () => {

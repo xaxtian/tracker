@@ -1,6 +1,8 @@
 # TrackBody
 
-App Angular que usa la cámara (móvil o webcam) para contar **sentadillas, flexiones y dominadas estrictas**.
+App Angular que usa la cámara (móvil o webcam) para contar **repeticiones estrictas** de 10 ejercicios: sentadillas,
+flexiones, fondos en paralelas, flexiones pike, flexiones de pino, dominadas, remo invertido, curl de bíceps, curl de
+bíceps unilateral y elevaciones de piernas.
 La detección del cuerpo se hace con MediaPipe Pose Landmarker en el propio navegador: el vídeo no sale del dispositivo.
 
 ## Arrancar
@@ -16,15 +18,23 @@ El móvil solo da acceso a la cámara por HTTPS. Con `start:mobile` el certifica
 ## Cómo funciona
 
 - **Repeticiones** ([rep-counter.ts](src/app/analysis/rep-counter.ts)): máquina de estados `extendido → flexionado → extendido`
-  sobre el ángulo principal (rodilla en sentadilla, codo en flexión y dominada). Una repetición solo es válida si empieza
+  sobre el ángulo principal de cada ejercicio (rodilla, codo o cadera). Una repetición solo es válida si empieza
   y termina en extensión completa, llega a la profundidad exigida y no aparece ningún fallo de técnica.
-- **Criterios por ejercicio** ([analyzers.ts](src/app/analysis/analyzers.ts)):
+- **Un módulo por ejercicio** ([src/app/exercises/](src/app/exercises/)): cada archivo contiene sus criterios de
+  estricto, sus ajustes, sus textos y cómo termina la serie. Para añadir un ejercicio basta con escribir su módulo y
+  añadirlo al registro ([index.ts](src/app/exercises/index.ts)); ver el capítulo «Añadir un ejercicio» de la guía.
   - Sentadilla: cadera por debajo de la rodilla, inclinación del tronco y (opcional) talones.
   - Flexión: codo a 90°, cuerpo recto (cadera caída o levantada) y rodillas estiradas.
+  - Fondos: el hombro baja hasta el codo, extensión completa y sin impulso de piernas.
+  - Flexiones pike: cabeza hacia el suelo con la cadera alta y las rodillas estiradas.
+  - Flexiones de pino: cabeza al suelo, cuerpo recto y sin patada.
   - Dominada: colgado completo, boca por encima de las manos, sin balanceo ni kipping.
+  - Remo invertido: pecho a la barra con el cuerpo recto.
+  - Curl de bíceps: recorrido completo con el codo quieto y sin balanceo del tronco. El unilateral guarda el brazo.
+  - Elevaciones de piernas: piernas a la altura de la cadera (o a la barra), estiradas y sin balanceo.
 - **Series automáticas** ([set-tracker.ts](src/app/analysis/set-tracker.ts)): la serie empieza con la primera repetición
-  y termina al salir de la posición (bajarte de la barra, levantarte de la plancha, salir de cámara) o, en sentadillas,
-  tras un tiempo sin repeticiones. La siguiente serie empieza sola.
+  y termina al salir de la posición (bajarte de la barra, levantarte de la plancha, salir de cámara) o, en los
+  ejercicios que no son de barra, tras un tiempo sin repeticiones. La siguiente serie empieza sola.
 - **Ajustes**: todos los umbrales se pueden cambiar en la pantalla Ajustes y se guardan en el navegador.
 - **Historial**: series agrupadas por día y ejercicio, con motivos de las repeticiones no válidas. Exportable a JSON.
 - **Peso / lastre**: en la pantalla de entrenamiento eliges los kg extra (negativo = asistida con goma). Se recuerda por
@@ -71,8 +81,9 @@ activa en la web generada.
 
 ## Colocación de la cámara
 
-- Sentadillas y flexiones: **de lado**, a 2-3 m, con el cuerpo entero en el encuadre.
 - Dominadas: **de frente**, lo bastante lejos para ver manos y pies.
+- Todos los demás: **de lado**, a 2-3 m, con el cuerpo entero en el encuadre. En el curl unilateral, con el brazo que
+  trabaja hacia la cámara.
 
 ## Próxima fase
 

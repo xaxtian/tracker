@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { EXERCISES, EXERCISE_IDS } from '../../exercises';
 import { DEFAULT_SETTINGS, SettingsService } from '../../services/settings.service';
 import { SettingsComponent } from './settings.component';
 
@@ -23,9 +24,9 @@ describe('SettingsComponent', () => {
   };
 
   it('shows one section per exercise plus general, with squats open', () => {
-    expect([...el.querySelectorAll('.sec-head h2')].map((h) => h.textContent)).toEqual([
-      '🏋️ Sentadillas', '💪 Flexiones', '🧗 Dominadas', '⚙️ General',
-    ]);
+    const titles = [...el.querySelectorAll('.sec-head h2')].map((h) => h.textContent);
+    expect(titles).toEqual([...EXERCISE_IDS.map((id) => `${EXERCISES[id].icon} ${EXERCISES[id].name}`), '⚙️ General']);
+    expect(titles).toContain('🔻 Fondos en paralelas');
     expect(labels()).toContain('Extensión arriba');
     expect(labels()).not.toContain('Tu altura');
   });
@@ -75,6 +76,26 @@ describe('SettingsComponent', () => {
     expect(svc.settings().squat.depthMode).toBe('kneeAngle');
     expect(labels()).toContain('Ángulo de rodilla abajo');
     expect(labels()).not.toContain('Margen de profundidad');
+  });
+
+  it('shows the settings of a new exercise module with its dependent fields', () => {
+    openSection('Elevaciones de piernas');
+    expect(labels()).toEqual(expect.arrayContaining(['Ángulo de cadera arriba', 'Piernas estiradas', 'Ángulo de rodilla mínimo', 'Exigir bajada controlada']));
+    const straight = input('legRaisestraightLegs') as HTMLInputElement;
+    straight.checked = false;
+    straight.dispatchEvent(new Event('change'));
+    f.detectChanges();
+    expect(svc.settings().legRaise.straightLegs).toBe(false);
+    expect(labels()).not.toContain('Ángulo de rodilla mínimo');
+  });
+
+  it('keeps the two curls independent', () => {
+    openSection('Curl de bíceps unilateral');
+    const range = input('curlSinglemaxElbowDrift') as HTMLInputElement;
+    range.value = '15';
+    range.dispatchEvent(new Event('input'));
+    expect(svc.settings().curlSingle.maxElbowDrift).toBe(15);
+    expect(svc.settings().curl.maxElbowDrift).toBe(30);
   });
 
   it('restores the defaults of the open section', () => {

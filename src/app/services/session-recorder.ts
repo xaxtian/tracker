@@ -1,4 +1,4 @@
-import { FrameEval } from '../analysis/analyzers';
+import { FrameEval } from '../analysis/analyzer';
 import { HudState, PoseDrawOptions, drawHud, drawPose } from '../analysis/overlay';
 import { ExerciseId, Pt, SetRecord } from '../models/types';
 import { RecordingMeta, VideoStoreService } from './video-store.service';

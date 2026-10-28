@@ -17,10 +17,12 @@ flowchart LR
   E --> P1
 </pre>
 
-| Ejercicio | Excéntrica | Concéntrica |
+| Ejercicios | Excéntrica | Concéntrica |
 |---|---|---|
-| Sentadilla, flexión | flexión (bajar) | extensión (subir) |
-| Dominada | extensión (bajar de la barra) | flexión (subir) |
+| Sentadilla, flexión, fondos, pike, pino | flexión (bajar) | extensión (subir) |
+| Dominada, remo invertido | extensión (bajar el cuerpo) | flexión (subir) |
+| Curl, curl unilateral | extensión (bajar el peso) | flexión (subir el peso) |
+| Elevaciones de piernas | extensión (bajar las piernas) | flexión (subir las piernas) |
 
 Lo decide `flexIsEccentric` de cada [Analyzer](../interfaces/Analyzer.html).
 
@@ -74,7 +76,11 @@ flowchart LR
 |---|---|---|---|
 | Sentadilla | cadera | muslo + pierna + tronco | 0,779 |
 | Flexión | hombro | tronco + muslo + pierna | 0,779 |
+| Fondos, pike, pino | hombro | tronco + brazo + antebrazo | 0,620 |
 | Dominada | centro de los hombros | tronco + brazo + antebrazo | 0,620 |
+| Remo invertido | hombro | tronco + muslo + pierna | 0,779 |
+| Curl, curl unilateral | muñeca | brazo + antebrazo | 0,332 |
+| Elevaciones de piernas | tobillo | muslo + pierna | 0,491 |
 
 - **Velocidad media** de una fase = desplazamiento vertical × metros/píxel ÷ duración.
 - **Velocidad pico** = máximo de la derivada de la altura suavizada.

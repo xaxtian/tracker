@@ -1,9 +1,7 @@
 import type { RepTempo } from '../analysis/tempo';
+import type { ExerciseId, ExerciseSettingsMap } from '../exercises';
 
-export type { RepTempo };
-
-/** The exercises the app can track. */
-export type ExerciseId = 'squat' | 'pushup' | 'pullup';
+export type { ExerciseId, RepTempo };
 
 /** Optional strictness rule shared by all exercises. */
 export interface EccentricRule {
@@ -23,51 +21,9 @@ export interface Pt {
   v: number;
 }
 
-/** Strictness criteria for squats (side view). */
-export interface SquatSettings extends EccentricRule {
-  /** Knee angle (deg) that counts as standing fully upright. */
-  topKneeAngle: number;
-  /** Depth test: hip below the knee, or knee closed to `bottomKneeAngle`. */
-  depthMode: 'hipBelowKnee' | 'kneeAngle';
-  /** Extra depth required below the knee, as a fraction of the thigh length (negative = more lenient). */
-  depthOffset: number;
-  /** Knee angle (deg) to reach when `depthMode` is `kneeAngle`. */
-  bottomKneeAngle: number;
-  /** Maximum torso lean from vertical (deg). */
-  maxTorsoLean: number;
-  /** Reject reps where the heels come off the floor. */
-  checkHeels: boolean;
-  /** Allowed heel rise, as a fraction of the shin length. */
-  heelTolerance: number;
-}
-
-/** Strictness criteria for push-ups (side view). */
-export interface PushupSettings extends EccentricRule {
-  /** Elbow angle (deg) with arms locked out. */
-  topElbowAngle: number;
-  /** Elbow angle (deg) to reach at the bottom. */
-  bottomElbowAngle: number;
-  /** Minimum shoulder-hip-ankle angle (deg): below it the hip sags or pikes. */
-  minBodyLineAngle: number;
-  /** Minimum knee angle (deg). */
-  minKneeAngle: number;
-}
-
-/** Strictness criteria for pull-ups (front view). */
-export interface PullupSettings extends EccentricRule {
-  /** Elbow angle (deg) that counts as a full dead hang. */
-  hangElbowAngle: number;
-  /** How far the mouth must pass above the hands, as a fraction of torso length. */
-  chinMargin: number;
-  /** Maximum horizontal hip travel during a rep, as a fraction of torso length. */
-  maxHipSwing: number;
-  /** Maximum change of knee angle during a rep (deg); more means kipping. */
-  maxKneeAngleChange: number;
-}
-
 /** Settings shared by every exercise. */
 export interface GeneralSettings {
-  /** Seconds without reps that close a squat set (push-ups use three times this). */
+  /** Seconds without reps that close a set (exercises with `longInactivity` use three times this). */
   restTimeoutSec: number;
   /** Seconds out of position (off the bar, out of plank, out of frame) that close a set. */
   offPositionSec: number;
@@ -95,13 +51,8 @@ export interface GeneralSettings {
   model: 'lite' | 'full';
 }
 
-/** Every user setting, grouped by section. */
-export interface AppSettings {
-  general: GeneralSettings;
-  squat: SquatSettings;
-  pushup: PushupSettings;
-  pullup: PullupSettings;
-}
+/** Every user setting: the general ones plus one section per exercise (see the exercise modules). */
+export type AppSettings = { general: GeneralSettings } & ExerciseSettingsMap;
 
 /** A section of {@link AppSettings}. */
 export type SettingsSection = keyof AppSettings;
@@ -110,7 +61,7 @@ export type SettingsSection = keyof AppSettings;
 export interface RepResult {
   /** True when it met every strictness criterion. */
   valid: boolean;
-  /** Fault ids that made it invalid (keys of {@link FAULT_MESSAGES}). */
+  /** Fault ids that made it invalid (see FAULT_MESSAGES in the exercise registry). */
   reasons: string[];
   /** Epoch ms when the rep started (left the top position). */
   start: number;
@@ -149,87 +100,11 @@ export interface SetRecord {
   restBeforeSec: number | null;
   /** Extra load in kg (weight, vest, belt). Negative = assisted (band). Missing/0 = bodyweight. */
   loadKg?: number;
+  /** Side trained in a unilateral exercise (L = left, R = right). */
+  side?: 'L' | 'R';
   /** Per-rep detail (sets recorded before tempo tracking don't have it). */
   reps?: RepRecord[];
   /** Recording that contains this set, and where it starts in it. */
   recordingId?: string;
   videoOffsetSec?: number;
 }
-
-/** Display name, icon and camera placement tips of each exercise. */
-export const EXERCISES: Record<ExerciseId, { name: string; icon: string; tips: string[] }> = {
-  squat: {
-    name: 'Sentadillas',
-    icon: '🏋️',
-    tips: [
-      'Coloca la cámara de lado, a 2-3 m y a la altura de la cadera.',
-      'Que se vea el cuerpo entero, de la cabeza a los pies.',
-      'Empieza de pie con las piernas estiradas.',
-    ],
-  },
-  pushup: {
-    name: 'Flexiones',
-    icon: '💪',
-    tips: [
-      'Coloca la cámara de lado, en el suelo o a poca altura, a 2 m.',
-      'Que se vea el cuerpo entero, de la cabeza a los pies.',
-      'Empieza en plancha con los brazos estirados.',
-    ],
-  },
-  pullup: {
-    name: 'Dominadas',
-    icon: '🧗',
-    tips: [
-      'Coloca la cámara de frente, lo bastante lejos para ver manos y pies.',
-      'Empieza colgado con los brazos completamente estirados.',
-      'La serie termina sola cuando te bajas de la barra.',
-    ],
-  },
-};
-
-/** On-screen explanation of each fault id. */
-export const FAULT_MESSAGES: Record<string, string> = {
-  // common
-  noDepth: 'No llegaste abajo del todo',
-  noLockout: 'No extendiste del todo',
-  noStart: 'No empezaste desde extensión completa',
-  // squat
-  squatNoDepth: 'No bajaste del paralelo',
-  torsoLean: 'Tronco demasiado inclinado',
-  heelsUp: 'Levantaste los talones',
-  // pushup
-  pushupNoDepth: 'No bajaste lo suficiente',
-  hipSag: 'Cadera caída',
-  hipPike: 'Cadera demasiado alta',
-  kneesBent: 'Rodillas dobladas',
-  // pullup
-  pullupNoDepth: 'La barbilla no superó la barra',
-  swing: 'Balanceo del cuerpo',
-  // tempo
-  fastEccentric: 'Bajada demasiado rápida',
-  kip: 'Impulso con las piernas (kipping)',
-};
-
-/** Short phrases for voice feedback. */
-export const FAULT_VOICE: Record<string, string> = {
-  noLockout: 'extiende del todo',
-  noStart: 'empieza extendido',
-  squatNoDepth: 'más abajo',
-  torsoLean: 'pecho arriba',
-  heelsUp: 'talones',
-  pushupNoDepth: 'más abajo',
-  hipSag: 'cadera caída',
-  hipPike: 'cadera alta',
-  kneesBent: 'rodillas',
-  pullupNoDepth: 'barbilla arriba',
-  swing: 'sin balanceo',
-  fastEccentric: 'baja más lento',
-  kip: 'sin impulso',
-};
-
-/** Names of the two pauses, which depend on where the joint is flexed. */
-export const PAUSE_LABELS: Record<ExerciseId, { turn: string; between: string }> = {
-  squat: { turn: 'Pausa abajo', between: 'Pausa arriba' },
-  pushup: { turn: 'Pausa abajo', between: 'Pausa arriba' },
-  pullup: { turn: 'Pausa arriba', between: 'Pausa colgado' },
-};

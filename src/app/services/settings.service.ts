@@ -1,7 +1,8 @@
 import { Injectable, signal } from '@angular/core';
+import { EXERCISE_DEFAULTS } from '../exercises';
 import { AppSettings, SettingsSection } from '../models/types';
 
-/** Factory values of every setting. */
+/** Factory values of every setting: the general ones plus the defaults of every exercise module. */
 export const DEFAULT_SETTINGS: AppSettings = {
   general: {
     restTimeoutSec: 10,
@@ -18,33 +19,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     userHeightCm: 175,
     model: 'full',
   },
-  squat: {
-    topKneeAngle: 165,
-    depthMode: 'hipBelowKnee',
-    depthOffset: 0,
-    bottomKneeAngle: 90,
-    maxTorsoLean: 50,
-    checkHeels: false,
-    heelTolerance: 0.08,
-    checkEccentric: false,
-    minEccentricSec: 1.5,
-  },
-  pushup: {
-    topElbowAngle: 160,
-    bottomElbowAngle: 90,
-    minBodyLineAngle: 160,
-    minKneeAngle: 150,
-    checkEccentric: false,
-    minEccentricSec: 1.5,
-  },
-  pullup: {
-    hangElbowAngle: 160,
-    chinMargin: 0,
-    maxHipSwing: 0.3,
-    maxKneeAngleChange: 45,
-    checkEccentric: false,
-    minEccentricSec: 1.5,
-  },
+  // One section per exercise, with the defaults declared in its module.
+  ...EXERCISE_DEFAULTS,
 };
 
 /** localStorage key of the settings. */

@@ -275,5 +275,6 @@
   .ok { color: var(--ok); font-weight: 700; }
   .ko { color: var(--ko); font-weight: 700; }
   .nowrap { white-space: nowrap; font-weight: 600; }
+  .side { color: var(--muted); white-space: nowrap; }
   .reasons td { font-size: 13px; color: var(--muted); text-align: left; border-bottom: 1px solid var(--line); }
 }

@@ -49,7 +49,8 @@ flowchart LR
 - **Fallos confirmados**: un fallo solo invalida si aparece en *N* fotogramas seguidos (ajuste *Fotogramas para
   confirmar un fallo*, 3 por defecto). Así un punto mal detectado en un fotograma no anula una repetición buena.
 - Una repetición que **sube a medias y vuelve a bajar** se da por terminada sin bloqueo (`noLockout`) y la siguiente
-  queda marcada como `noStart`.
+  queda marcada como `noStart`. La subida se mide desde el punto más profundo: seguir bajando más allá del umbral de
+  profundidad no cuenta como subir.
 
 ## Repetición pendiente
 
@@ -63,9 +64,12 @@ queda pendiente y se anuncia cuando ocurre lo primero de esto:
 
 En la práctica el número suena **unos 0,2 s** después de terminar.
 
+
 ## Criterios por ejercicio
 
-Todos los umbrales se cambian en [Ajustes](ajustes.html).
+Cada ejercicio es un módulo en `src/app/exercises/` con su propio *analyzer* (ver
+[Añadir un ejercicio](añadir-un-ejercicio.html)). Todos los umbrales se cambian en [Ajustes](ajustes.html).
+"Ángulo" es la articulación que sigue el contador: alto = extendido, bajo = flexionado.
 
 ### 🏋️ Sentadilla — cámara de lado
 
@@ -88,6 +92,41 @@ Todos los umbrales se cambian en [Ajustes](ajustes.html).
 | `hipSag` / `hipPike` | Hombro-cadera-tobillo < 160°, con la cadera por debajo / por encima de la línea | 160° |
 | `kneesBent` | Rodilla < 150° | 150° |
 
+### 🔻 Fondos en paralelas — cámara de lado
+
+| | Criterio | Por defecto |
+|---|---|---|
+| Ángulo | Hombro-codo-muñeca | |
+| Extensión | Codo ≥ *Extensión arriba* | 160° |
+| Profundidad | El hombro baja hasta la altura del codo (margen en % del brazo) | 0 % |
+| Posición | Manos por debajo de codos y hombros, **antebrazo casi vertical** (< 35°) y tronco < 60° | |
+| `kip` | El ángulo de rodilla cambia más que el máximo durante la repetición | 45° |
+
+El antebrazo vertical es lo que distingue un fondo de estar de pie doblando los brazos: al doblar el codo de pie, el
+antebrazo se inclina y la persona sale de posición.
+
+### ⛰️ Flexiones pike — cámara de lado
+
+| | Criterio | Por defecto |
+|---|---|---|
+| Ángulo | Hombro-codo-muñeca | |
+| Extensión | Codo ≥ *Extensión arriba* | 160° |
+| Profundidad | La nariz llega cerca de las manos (distancia en % del brazo) | 40 % |
+| Posición | V invertida: cadera por encima de hombros y pies, manos en el suelo, hombro-cadera-tobillo < 155° | |
+| `pikeFlat` | Hombro-cadera-tobillo mayor que el máximo: la cadera bajó | 120° |
+| `kneesBent` | Rodilla < 150° | 150° |
+
+### 🤸 Flexiones de pino — cámara de lado
+
+| | Criterio | Por defecto |
+|---|---|---|
+| Ángulo | Hombro-codo-muñeca | |
+| Extensión | Codo ≥ *Extensión arriba* | 160° |
+| Profundidad | La nariz llega cerca de las manos: cabeza al suelo | 40 % |
+| Posición | Boca abajo: cadera por encima de los hombros, manos por debajo, cuerpo a menos de 45° de la vertical | |
+| `archedBack` | Hombro-cadera-tobillo menor que el mínimo: cuerpo arqueado o doblado | 150° |
+| `kip` | El ángulo de rodilla cambia más que el máximo (patada) | 45° |
+
 ### 🧗 Dominada — cámara de frente
 
 | | Criterio | Por defecto |
@@ -99,5 +138,40 @@ Todos los umbrales se cambian en [Ajustes](ajustes.html).
 | `swing` | La cadera se desplaza en horizontal más que el % del tronco desde el inicio | 30 % |
 | `kip` | El ángulo de rodilla cambia más que el máximo durante la repetición | 45° |
 
-El lado del cuerpo que se analiza (sentadilla y flexión) lo elige [SidePicker](../classes/SidePicker.html): el más
+### 🚣 Remo invertido — cámara de lado
+
+| | Criterio | Por defecto |
+|---|---|---|
+| Ángulo | Hombro-codo-muñeca | |
+| Extensión | Codo ≥ *Brazos estirados abajo* | 160° |
+| Profundidad | El hombro sube hasta cerca de las manos: pecho a la barra (% del brazo) | 50 % |
+| Posición | Manos por encima de los hombros y cuerpo a menos de 50° de la horizontal | |
+| `hipSag` / `hipPike` | Hombro-cadera-tobillo < 160° | 160° |
+
+### 🦾 Curl de bíceps y ✊ curl unilateral — cámara de lado
+
+| | Criterio | Por defecto |
+|---|---|---|
+| Ángulo | Hombro-codo-muñeca del brazo más cercano a la cámara | |
+| Extensión | Codo ≥ *Brazo estirado abajo* | 150° |
+| Profundidad | Codo ≤ *Ángulo de codo arriba* | 50° |
+| Posición | Codo por debajo del hombro y tronco a menos de 45° de la vertical | |
+| `elbowDrift` | El brazo se separa de la vertical más que el máximo: el codo se adelanta | 30° |
+| `torsoSwing` | La inclinación del tronco cambia más que el máximo durante la repetición | 10° |
+
+El **unilateral** usa el mismo análisis y además guarda en cada serie qué brazo se ha trabajado. Si cambias de brazo
+a mitad de serie, la serie se cierra y empieza otra.
+
+### 🦵 Elevaciones de piernas — cámara de lado
+
+| | Criterio | Por defecto |
+|---|---|---|
+| Ángulo | Hombro-cadera-rodilla | |
+| Extensión | Cadera ≥ *Colgado recto* | 160° |
+| Profundidad | Cadera ≤ *Ángulo de cadera arriba* (90° = piernas paralelas, ~40° = pies a la barra) | 90° |
+| Posición | Manos por encima de los hombros (colgado) | |
+| `kneesBent` | Rodilla < mínimo, si se exigen piernas estiradas | 140°, activado |
+| `swing` | La cadera se desplaza en horizontal más que el % del tronco desde el inicio | 40 % |
+
+El lado del cuerpo que se analiza en los ejercicios de lado lo elige [SidePicker](../classes/SidePicker.html): el más
 visible, con histéresis para que no salte de un lado a otro.

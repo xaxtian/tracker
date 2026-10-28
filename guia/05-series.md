@@ -16,11 +16,14 @@ stateDiagram-v2
 
 ## Reglas de cierre por ejercicio
 
-| Ejercicio | Fuera de posición | Sin actividad |
+Cada módulo elige su regla (`setEnd`). Salir de la posición durante *Tiempo fuera de posición* (2 s) cierra la serie
+siempre; la diferencia está en la inactividad:
+
+| Regla | Sin actividad | Ejercicios |
 |---|---|---|
-| Sentadilla | *Tiempo fuera de posición* (2 s) | *Descanso para cerrar serie* (10 s) |
-| Flexión | 2 s (levantarse de la plancha) | el triple: 30 s |
-| Dominada | 2 s (bajarse de la barra) | nunca: puedes colgar lo que quieras |
+| `inactivity` | *Descanso para cerrar serie* (10 s) | Sentadilla, fondos, curl, curl unilateral |
+| `longInactivity` | el triple: 30 s (se puede descansar en la posición) | Flexión, flexiones pike |
+| `offPosition` | nunca: solo al salir de la posición | Dominada, remo invertido, flexiones de pino, elevaciones de piernas |
 
 - Una repetición en curso cuenta como actividad: una bajada lenta no cierra la serie.
 - Un momento corto fuera de posición (menos del tiempo configurado) se perdona.
@@ -32,6 +35,7 @@ Al cerrarse, la serie ([SetRecord](../interfaces/SetRecord.html)) se guarda en e
 - hora de inicio y fin, repeticiones válidas y no válidas, y cuántas veces apareció cada fallo;
 - **descanso previo**: desde el final de la serie anterior hasta la primera repetición de esta;
 - **peso/lastre** elegido en ese momento (si no es 0);
+- en el **curl unilateral**, el **brazo** trabajado. Si cambias de brazo a mitad de serie, la serie se cierra y empieza otra;
 - el detalle de **cada repetición** con su tempo;
 - el vídeo y el segundo en que empieza, si se estaba grabando.
 
