@@ -51,7 +51,7 @@
   &.dim .big { opacity: 0.45; }
 }
 
-.hud-set { position: absolute; top: 14px; right: 14px; }
+.hud-set { position: absolute; top: 14px; right: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 
 .pill {
   display: inline-block;
@@ -63,6 +63,50 @@
   color: #fff;
   &.on { background: var(--accent); color: #04121f; }
   &.rest { background: #f59e0b; color: #1f1300; }
+  &.load { font-size: 13px; padding: 4px 10px; }
+}
+
+.load-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 10px;
+  label { font-weight: 600; }
+  small { flex: 1 1 100%; font-size: 12px; }
+}
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--card);
+  button {
+    width: 42px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    &:active { background: var(--accent); color: #04121f; }
+  }
+  input {
+    width: 68px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;
+    &::-webkit-inner-spin-button, &::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  }
+  .unit { padding: 0 6px 0 4px; color: var(--muted); }
 }
 
 .toast {
@@ -230,5 +274,6 @@
   th { font-size: 13px; color: var(--muted); font-weight: 600; }
   .ok { color: var(--ok); font-weight: 700; }
   .ko { color: var(--ko); font-weight: 700; }
+  .nowrap { white-space: nowrap; font-weight: 600; }
   .reasons td { font-size: 13px; color: var(--muted); text-align: left; border-bottom: 1px solid var(--line); }
 }

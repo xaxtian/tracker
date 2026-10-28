@@ -27,6 +27,8 @@ El móvil solo da acceso a la cámara por HTTPS. Con `start:mobile` el certifica
   tras un tiempo sin repeticiones. La siguiente serie empieza sola.
 - **Ajustes**: todos los umbrales se pueden cambiar en la pantalla Ajustes y se guardan en el navegador.
 - **Historial**: series agrupadas por día y ejercicio, con motivos de las repeticiones no válidas. Exportable a JSON.
+- **Peso / lastre**: en la pantalla de entrenamiento eliges los kg extra (negativo = asistida con goma). Se recuerda por
+  ejercicio, se guarda en cada serie y se puede corregir después desde el detalle de la serie en el historial.
 - **Tempo y velocidad** ([tempo.ts](src/app/analysis/tempo.ts)): duración de la fase excéntrica, concéntrica y de las
   pausas, y velocidad media/pico en m/s (escala calibrada con la altura del usuario y proporciones antropométricas).
   Usa la marca de tiempo real de cada fotograma (requestVideoFrameCallback), suavizado centrado sin retraso y cruces de

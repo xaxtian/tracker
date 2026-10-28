@@ -45,6 +45,16 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .caret { color: var(--muted); font-size: 11px; }
 .vel { color: var(--accent); font-weight: 600; }
 .warn { color: #f59e0b; font-weight: 700; }
+.load { white-space: nowrap; font-weight: 600; }
+.edit-load {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+  font-size: 13px;
+  input { width: 76px; padding: 5px 6px; font-size: 15px; text-align: right; }
+}
 .detail > td { text-align: left; padding: 4px 6px 12px; background: var(--bg); }
 .summary { margin: 6px 0; font-size: 13px; color: var(--muted); }
 .scroll { overflow-x: auto; }

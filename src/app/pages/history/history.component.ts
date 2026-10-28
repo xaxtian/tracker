@@ -1,6 +1,6 @@
 import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { TempoAverages, fmt2, tempoAverages, velocityLoss } from '../../analysis/set-stats';
+import { TempoAverages, fmt2, fmtLoad, tempoAverages, velocityLoss } from '../../analysis/set-stats';
 import { RecordingMeta, VideoStoreService } from '../../services/video-store.service';
 import { RecordingPlayerComponent } from '../videos/recording-player.component';
 import { EXERCISES, ExerciseId, FAULT_MESSAGES, PAUSE_LABELS, SetRecord } from '../../models/types';
@@ -30,6 +30,7 @@ export class HistoryComponent implements OnDestroy {
   private videos = inject(VideoStoreService);
   readonly expanded = signal<string | null>(null);
   readonly fmt2 = fmt2;
+  readonly fmtLoad = fmtLoad;
   readonly playing = signal<{ set: SetRecord; meta: RecordingMeta } | null>(null);
   readonly videoIds = computed(() => new Set(this.videos.recordings().map((r) => r.id)));
   readonly ex = EXERCISES;
@@ -128,6 +129,13 @@ export class HistoryComponent implements OnDestroy {
   rest(sec: number | null): string {
     if (sec === null) return '—';
     return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  }
+
+  /** Corrects the load of a set after the fact. */
+  setLoad(s: SetRecord, value: string): void {
+    const n = parseFloat(String(value).replace(',', '.'));
+    const kg = Number.isFinite(n) ? Math.round(Math.min(500, Math.max(-100, n)) * 100) / 100 : 0;
+    this.history.update(s.id, { loadKg: kg || undefined });
   }
 
   remove(s: SetRecord): void {

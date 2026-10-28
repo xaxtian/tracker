@@ -91,6 +91,8 @@ export interface SetRecord {
   /** Fault id -> times it invalidated a rep. */
   reasons: Record<string, number>;
   restBeforeSec: number | null;
+  /** Extra load in kg (weight, vest, belt). Negative = assisted (band). Missing/0 = bodyweight. */
+  loadKg?: number;
   /** Per-rep detail (sets recorded before tempo tracking don't have it). */
   reps?: RepRecord[];
   /** Recording that contains this set, and where it starts in it. */

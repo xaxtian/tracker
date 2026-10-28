@@ -5,7 +5,7 @@ import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import { Analyzer, FrameEval, createAnalyzer } from '../../analysis/analyzers';
 import { BANNER_MS, HudState, drawPose, poseColor } from '../../analysis/overlay';
 import { RepCounter, RepOptions } from '../../analysis/rep-counter';
-import { fmt2, tempoText, velocityLoss } from '../../analysis/set-stats';
+import { fmt2, fmtLoad, tempoText, velocityLoss } from '../../analysis/set-stats';
 import { SetEndRules, SetTracker } from '../../analysis/set-tracker';
 import {
   AppSettings, EXERCISES, ExerciseId, FAULT_MESSAGES, FAULT_VOICE, PAUSE_LABELS, Pt, RepResult, RepTempo, SetRecord,
@@ -20,6 +20,9 @@ import { RecordingMeta, VideoStoreService, formatClock } from '../../services/vi
 type Status = 'off' | 'loading' | 'running' | 'error';
 
 const CAMERA_KEY = 'trackbody.camera';
+const LOAD_KEY = 'trackbody.load';
+const LOAD_STEP = 2.5;
+const LOAD_LIMITS = { min: -100, max: 500 };
 
 @Component({
   selector: 'app-workout',
@@ -81,6 +84,9 @@ export class WorkoutComponent implements OnDestroy {
   /** Frame rate delivered by the camera and frames actually analyzed per second. */
   readonly cameraFps = signal<number | null>(null);
   readonly analysisFps = signal<number | null>(null);
+  /** Extra load (kg) saved with each set; remembered per exercise. */
+  readonly loadKg = signal(0);
+  readonly fmtLoad = fmtLoad;
 
   private analyzer: Analyzer;
   private counter: RepCounter;
@@ -114,7 +120,33 @@ export class WorkoutComponent implements OnDestroy {
     // Rear camera is more practical on a phone propped up in front of you.
     if (/Android|iPhone|iPad/i.test(navigator.userAgent)) this.facing.set('environment');
     this.loadCameraChoice();
+    this.loadKg.set(this.readLoads()[this.exercise] ?? 0);
     void this.listCameras();
+  }
+
+  /** Sets the extra load. It applies to the set in progress and the next ones. */
+  setLoad(kg: number | string): void {
+    let n = typeof kg === 'number' ? kg : parseFloat(String(kg).replace(',', '.'));
+    if (!Number.isFinite(n)) n = 0;
+    n = Math.round(Math.min(LOAD_LIMITS.max, Math.max(LOAD_LIMITS.min, n)) * 100) / 100;
+    this.loadKg.set(n);
+    try {
+      localStorage.setItem(LOAD_KEY, JSON.stringify({ ...this.readLoads(), [this.exercise]: n }));
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  stepLoad(dir: 1 | -1): void {
+    this.setLoad(Math.round((this.loadKg() + dir * LOAD_STEP) / LOAD_STEP) * LOAD_STEP);
+  }
+
+  private readLoads(): Partial<Record<ExerciseId, number>> {
+    try {
+      return JSON.parse(localStorage.getItem(LOAD_KEY) ?? '{}') ?? {};
+    } catch {
+      return {};
+    }
   }
 
   async start(): Promise<void> {
@@ -456,14 +488,17 @@ export class WorkoutComponent implements OnDestroy {
   private onSetEnded(set: SetRecord): void {
     this.inSet.set(false);
     const index = this.sessionSets().length + 1;
+    if (this.loadKg()) set.loadKg = this.loadKg();
     if (this.recorder) {
       set.recordingId = this.recorder.meta.id;
       set.videoOffsetSec = this.recorder.markSet(set, index);
     }
     const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+    const load = fmtLoad(set.loadKg);
     this.showBanner(
       `Serie ${index} terminada`,
-      plural(set.valid, 'válida') + (set.invalid ? ` · ${set.invalid} no ${set.invalid === 1 ? 'válida' : 'válidas'}` : ''),
+      (load ? `${load} · ` : '') +
+        plural(set.valid, 'válida') + (set.invalid ? ` · ${set.invalid} no ${set.invalid === 1 ? 'válida' : 'válidas'}` : ''),
     );
     this.history.add(set);
     this.sessionSets.update((all) => [...all, set]);
@@ -483,7 +518,7 @@ export class WorkoutComponent implements OnDestroy {
     const r = this.lastRep();
     const b = this.setBanner();
     return {
-      title: this.info.name,
+      title: [this.info.name, fmtLoad(this.loadKg())].filter(Boolean).join(' '),
       valid: this.valid(),
       invalid: this.invalid(),
       inSet: this.inSet(),

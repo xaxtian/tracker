@@ -22,6 +22,9 @@
       } @else {
         <span class="pill">Esperando</span>
       }
+      @if (loadKg()) {
+        <span class="pill load">{{ fmtLoad(loadKg()) }}</span>
+      }
     </div>
     <!-- @for with track by id re-creates the toast so its animation replays -->
     @for (r of lastRepList(); track r.id) {
@@ -77,6 +80,26 @@
       }
     </select>
   }
+</div>
+
+<div class="load-bar">
+  <label for="load">🏋️ Peso / lastre</label>
+  <div class="stepper">
+    <button type="button" (click)="stepLoad(-1)" aria-label="Quitar 2,5 kg">−</button>
+    <input id="load" type="number" inputmode="decimal" step="0.5" [value]="loadKg()"
+           (change)="setLoad($any($event.target).value); $any($event.target).value = loadKg()" (focus)="$any($event.target).select()" />
+    <span class="unit">kg</span>
+    <button type="button" (click)="stepLoad(1)" aria-label="Añadir 2,5 kg">+</button>
+  </div>
+  <small class="muted">
+    @if (loadKg() > 0) {
+      Peso extra que llevas. Se guarda en cada serie.
+    } @else if (loadKg() < 0) {
+      Asistencia (goma, máquina). Se guarda en cada serie.
+    } @else {
+      Solo peso corporal. Usa negativo para asistencia.
+    }
+  </small>
 </div>
 
 @if (status() === 'running') {
@@ -136,19 +159,20 @@
   } @else {
     <table class="sets">
       <thead>
-        <tr><th>#</th><th>Válidas</th><th>No válidas</th><th>Pérdida vel.</th><th>Descanso previo</th></tr>
+        <tr><th>#</th><th>Peso</th><th>Válidas</th><th>No válidas</th><th>Pérdida vel.</th><th>Descanso previo</th></tr>
       </thead>
       <tbody>
         @for (s of sessionSets(); track s.id; let i = $index) {
           <tr>
             <td>{{ i + 1 }}</td>
+            <td class="nowrap">{{ fmtLoad(s.loadKg) || '—' }}</td>
             <td class="ok">{{ s.valid }}</td>
             <td [class.ko]="s.invalid > 0" [title]="reasonsOf(s)">{{ s.invalid }}</td>
             <td>{{ velocityLoss(s.reps) === null ? '—' : (velocityLoss(s.reps)! | number: '1.0-0') + ' %' }}</td>
             <td>{{ s.restBeforeSec !== null ? formatRest(s.restBeforeSec) : '—' }}</td>
           </tr>
           @if (s.invalid > 0) {
-            <tr class="reasons"><td></td><td colspan="4">{{ reasonsOf(s) }}</td></tr>
+            <tr class="reasons"><td></td><td colspan="5">{{ reasonsOf(s) }}</td></tr>
           }
         }
       </tbody>

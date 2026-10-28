@@ -35,13 +35,14 @@
         </div>
         <table>
           <thead>
-            <tr><th>Hora</th><th>Válidas</th><th>No válidas</th><th>Vel. ↑</th><th>Pérdida</th><th>Descanso</th><th></th></tr>
+            <tr><th>Hora</th><th>Peso</th><th>Válidas</th><th>No válidas</th><th>Vel. ↑</th><th>Pérdida</th><th>Descanso</th><th></th></tr>
           </thead>
           <tbody>
             @for (s of g.sets; track s.id) {
               <tr class="set-row" [class.open]="expanded() === s.id" (click)="toggle(s)"
                   [attr.aria-expanded]="expanded() === s.id" title="Ver detalle de cada repetición">
                 <td><span class="caret">{{ expanded() === s.id ? '▾' : '▸' }}</span> {{ s.start | date: 'HH:mm' }}</td>
+                <td class="load">{{ fmtLoad(s.loadKg) || '—' }}</td>
                 <td class="ok">{{ s.valid }}</td>
                 <td [class.ko]="s.invalid > 0">{{ s.invalid }}</td>
                 <td class="vel">{{ fmt2(avg(s).meanConVel) }}</td>
@@ -55,11 +56,18 @@
                 </td>
               </tr>
               @if (s.invalid > 0 && expanded() !== s.id) {
-                <tr class="reasons"><td></td><td colspan="6">{{ reasons(s) }}</td></tr>
+                <tr class="reasons"><td></td><td colspan="7">{{ reasons(s) }}</td></tr>
               }
               @if (expanded() === s.id) {
                 <tr class="detail">
-                  <td colspan="7">
+                  <td colspan="8">
+                    <label class="edit-load">
+                      Peso / lastre
+                      <input type="number" inputmode="decimal" step="0.5" [value]="s.loadKg ?? 0"
+                             (change)="setLoad(s, $any($event.target).value)" (focus)="$any($event.target).select()" />
+                      kg
+                      <small class="muted">(negativo = asistida)</small>
+                    </label>
                     <p class="summary">
                       Duración {{ duration(s) }}
                       @if (avg(s); as a) {
@@ -115,7 +123,7 @@
     <div class="modal" role="dialog" aria-modal="true" [attr.aria-label]="'Vídeo de ' + ex[p.meta.exercise].name" (click)="$event.stopPropagation()">
       <header class="modal-head">
         <div>
-          <b>{{ ex[p.meta.exercise].icon }} {{ ex[p.meta.exercise].name }}</b>
+          <b>{{ ex[p.meta.exercise].icon }} {{ ex[p.meta.exercise].name }} {{ fmtLoad(p.set.loadKg) }}</b>
           <small class="muted">{{ p.set.start | date: "EEEE d MMMM, HH:mm" }} · {{ p.set.valid }} válidas</small>
         </div>
         <button class="close" (click)="closePlayer()" aria-label="Cerrar">✕</button>

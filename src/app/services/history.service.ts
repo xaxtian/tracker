@@ -12,6 +12,11 @@ export class HistoryService {
     this.save();
   }
 
+  update(id: string, patch: Partial<SetRecord>): void {
+    this.sets.update((all) => all.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+    this.save();
+  }
+
   remove(id: string): void {
     this.sets.update((all) => all.filter((s) => s.id !== id));
     this.save();

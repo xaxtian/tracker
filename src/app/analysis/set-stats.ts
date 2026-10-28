@@ -5,6 +5,13 @@ export function fmt2(n: number | null | undefined): string {
   return n === null || n === undefined ? '—' : n.toFixed(2).replace('.', ',');
 }
 
+/** Extra load: "+20 kg", "+2,5 kg", "−10 kg" (assisted) or "" for bodyweight. */
+export function fmtLoad(kg: number | null | undefined): string {
+  if (!kg) return '';
+  const n = Math.abs(kg).toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+  return `${kg > 0 ? '+' : '−'}${n} kg`;
+}
+
 /** Short tempo summary for notifications: "↓1,84 ↑0,92 s · 0,62 m/s". */
 export function tempoText(t: RepTempo | undefined): string {
   if (!t) return '';
