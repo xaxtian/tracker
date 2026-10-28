@@ -65,9 +65,12 @@ export class RecordingPlayerComponent implements OnDestroy {
 
   readonly clock = formatClock;
   readonly canShare = canShareFiles();
+  /** Object URL of the loaded video. */
   readonly url = signal('');
   readonly error = signal('');
+  /** Current playback time (s). */
   readonly time = signal(0);
+  /** Chapter (set id) being played. */
   readonly current = computed(() => {
     const t = this.time();
     return this.meta().sets.find((s) => t >= s.startSec && t <= s.endSec + 3)?.setId ?? null;
@@ -102,6 +105,7 @@ export class RecordingPlayerComponent implements OnDestroy {
     }
   }
 
+  /** Seeks to `startAt` and autoplays once the video metadata is loaded. */
   onLoaded(): void {
     const v = this.videoRef()?.nativeElement;
     if (!v) return;
@@ -127,11 +131,13 @@ export class RecordingPlayerComponent implements OnDestroy {
     }
   }
 
+  /** Tracks the playback time to highlight the current chapter. */
   onTime(): void {
     const v = this.videoRef()?.nativeElement;
     if (v && !this.fixingDuration) this.time.set(v.currentTime);
   }
 
+  /** Jumps to a second and plays. */
   seek(sec: number): void {
     const v = this.videoRef()?.nativeElement;
     if (!v) return;
@@ -139,10 +145,12 @@ export class RecordingPlayerComponent implements OnDestroy {
     void v.play().catch(() => undefined);
   }
 
+  /** Saves the video file. */
   download(): void {
     void downloadRecording(this.store, this.meta(), this.blob ?? undefined);
   }
 
+  /** Opens the system share sheet with the video. */
   share(): void {
     void shareRecording(this.store, this.meta(), this.blob ?? undefined);
   }

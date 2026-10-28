@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { EXERCISES, ExerciseId } from '../../models/types';
 import { HistoryService } from '../../services/history.service';
 
+/** Home page: one card per exercise with today's valid reps. */
 @Component({
   selector: 'app-home',
   imports: [RouterLink],
@@ -40,6 +41,7 @@ export class HomeComponent {
   private history = inject(HistoryService);
   readonly exercises = (Object.keys(EXERCISES) as ExerciseId[]).map((id) => ({ id, ...EXERCISES[id] }));
 
+  /** Valid reps per exercise since midnight. */
   readonly today = computed(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);

@@ -2,10 +2,15 @@ import { Component, inject, signal } from '@angular/core';
 import { AppSettings, SettingsSection } from '../../models/types';
 import { SettingsService } from '../../services/settings.service';
 
+/** Description of one setting control. */
 interface Field {
+  /** Setting key inside its section. */
   key: string;
+  /** Visible name. */
   label: string;
+  /** Explanation under the control. */
   help: string;
+  /** Slider, switch or drop-down. */
   type: 'range' | 'toggle' | 'select';
   min?: number;
   max?: number;
@@ -24,12 +29,14 @@ function eccentricFields(section: 'squat' | 'pushup' | 'pullup'): Field[] {
   ];
 }
 
+/** A collapsible group of settings. */
 interface Section {
   id: SettingsSection;
   title: string;
   fields: Field[];
 }
 
+/** Every setting shown on the page, by section. */
 const SECTIONS: Section[] = [
   {
     id: 'squat',
@@ -100,6 +107,7 @@ const SECTIONS: Section[] = [
   },
 ];
 
+/** Settings page, generated from `SECTIONS`. */
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.component.html',
@@ -109,23 +117,28 @@ export class SettingsComponent {
   private svc = inject(SettingsService);
   readonly settings = this.svc.settings;
   readonly sections = SECTIONS;
+  /** Section currently expanded. */
   readonly open = signal<SettingsSection>('squat');
 
+  /** Current value of a setting. */
   value(section: SettingsSection, key: string): any {
     return (this.settings()[section] as unknown as Record<string, unknown>)[key];
   }
 
+  /** Value with its unit for display (ratios as %). */
   display(section: SettingsSection, f: Field): string {
     const v = this.value(section, f.key) as number;
     if (f.unit === '%') return `${Math.round(v * 100)}%`;
     return `${v}${f.unit ?? ''}`;
   }
 
+  /** Saves a value from a control (sliders give strings, stored as numbers). */
   set(section: SettingsSection, key: string, raw: string | boolean, f: Field): void {
     const v = f.type === 'range' ? Number(raw) : raw;
     this.svc.update(section, key as never, v);
   }
 
+  /** Restores the defaults of a section. */
   reset(section: SettingsSection): void {
     this.svc.resetSection(section);
   }

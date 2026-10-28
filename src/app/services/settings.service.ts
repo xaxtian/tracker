@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { AppSettings, SettingsSection } from '../models/types';
 
+/** Factory values of every setting. */
 export const DEFAULT_SETTINGS: AppSettings = {
   general: {
     restTimeoutSec: 10,
@@ -46,22 +47,28 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
 };
 
+/** localStorage key of the settings. */
 const KEY = 'trackbody.settings';
 
+/** User settings, kept in a signal and saved to localStorage on every change. */
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
+  /** Current settings. */
   readonly settings = signal<AppSettings>(this.load());
 
+  /** Changes one setting and saves. */
   update<S extends SettingsSection>(section: S, key: keyof AppSettings[S], value: unknown): void {
     this.settings.update((s) => ({ ...s, [section]: { ...s[section], [key]: value } }));
     this.save();
   }
 
+  /** Restores the defaults of one section. */
   resetSection(section: SettingsSection): void {
     this.settings.update((s) => ({ ...s, [section]: structuredClone(DEFAULT_SETTINGS[section]) }));
     this.save();
   }
 
+  /** Saved settings merged over the defaults, so settings added later get their default. */
   private load(): AppSettings {
     const base = structuredClone(DEFAULT_SETTINGS);
     try {

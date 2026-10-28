@@ -7,6 +7,7 @@ import { routes } from './app.routes';
 
 registerLocaleData(localeEs);
 
+/** Root providers: zoneless change detection, routes and Spanish locale. */
 export const appConfig: ApplicationConfig = {
   providers: [
     // Zoneless: the UI is driven by signals, so the 30 fps camera loop never triggers zone.js.

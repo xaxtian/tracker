@@ -23,6 +23,7 @@ export const LM = {
   toeR: 32,
 } as const;
 
+/** Pairs of landmark indices joined by a bone when drawing the skeleton. */
 export const CONNECTIONS: [number, number][] = [
   [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
   [11, 23], [12, 24], [23, 24],
@@ -50,14 +51,17 @@ export function fromHorizontal(a: Pt, b: Pt): number {
   return (Math.atan2(Math.abs(b.y - a.y), Math.abs(b.x - a.x)) * 180) / Math.PI;
 }
 
+/** Distance between two points, in pixels. */
 export function dist(a: Pt, b: Pt): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+/** Midpoint of two landmarks; its visibility is the lower of the two. */
 export function mid(a: Pt, b: Pt): Pt {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, v: Math.min(a.v, b.v) };
 }
 
+/** True when every point reaches the minimum visibility. */
 export function visible(min: number, ...pts: Pt[]): boolean {
   return pts.every((p) => p && p.v >= min);
 }
@@ -73,12 +77,14 @@ export function belowLine(p: Pt, a: Pt, b: Pt): number {
   return p.y - yOnLine;
 }
 
+/** Body side: left or right. */
 export type Side = 'L' | 'R';
 
 /** Picks the body side facing the camera, with hysteresis to avoid flicker. */
 export class SidePicker {
   private side: Side = 'L';
 
+  /** Returns the side whose landmarks `idsL` / `idsR` are more visible on average. */
   pick(lm: Pt[], idsL: number[], idsR: number[]): Side {
     const score = (ids: number[]) => ids.reduce((s, i) => s + (lm[i]?.v ?? 0), 0) / ids.length;
     const l = score(idsL), r = score(idsR);

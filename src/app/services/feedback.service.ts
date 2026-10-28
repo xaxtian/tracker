@@ -24,6 +24,7 @@ export class FeedbackService {
     }
   }
 
+  /** Says a short phrase in Spanish, cutting off the previous one. */
   speak(text: string): void {
     if (!('speechSynthesis' in window)) return;
     speechSynthesis.cancel();
@@ -34,6 +35,7 @@ export class FeedbackService {
     speechSynthesis.speak(u);
   }
 
+  /** High short beep for a valid rep, low long one for an invalid rep. */
   beep(ok: boolean): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;

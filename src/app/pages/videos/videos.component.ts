@@ -5,6 +5,7 @@ import { EXERCISES } from '../../models/types';
 import { RecordingMeta, VideoStoreService, formatBytes, formatClock } from '../../services/video-store.service';
 import { downloadRecording } from './video-actions';
 
+/** List of saved recordings with storage usage. */
 @Component({
   selector: 'app-videos',
   imports: [RouterLink, DatePipe],
@@ -51,6 +52,7 @@ import { downloadRecording } from './video-actions';
 export class VideosComponent {
   readonly store = inject(VideoStoreService);
   readonly ex = EXERCISES;
+  /** Storage used and available, as text. */
   readonly usage = signal<string | null>(null);
   readonly clock = formatClock;
   readonly bytes = formatBytes;
@@ -64,14 +66,17 @@ export class VideosComponent {
     });
   }
 
+  /** Valid reps across all the sets of a recording. */
   totalValid(r: RecordingMeta): number {
     return r.sets.reduce((n, s) => n + s.valid, 0);
   }
 
+  /** Saves the video file. */
   download(r: RecordingMeta): void {
     void downloadRecording(this.store, r);
   }
 
+  /** Deletes a recording after confirmation. */
   remove(r: RecordingMeta): void {
     if (confirm('¿Borrar este vídeo? No se puede deshacer.')) void this.store.remove(r.id);
   }

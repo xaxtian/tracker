@@ -62,6 +62,7 @@ const PHASE_SMOOTH = { fraction: 0.08, min: 60, max: 160 };
 /** A phase is "moving" while speed is above this fraction of its peak speed. */
 const SPEED_FRACTION = 0.1;
 
+/** Phase boundaries (ms) found on a smoothed trajectory. */
 interface Bounds {
   a: number[];
   aTop: number;
@@ -108,9 +109,14 @@ function phaseBounds(t: number[], raw: number[], halfWidth: number): Bounds | nu
   return { a, aTop, flexStart, flexEnd, extStart, extEnd };
 }
 
+/** Smoothing half-width (ms) suited to a phase of the given duration. */
 const phaseWindow = (ms: number) =>
   Math.max(PHASE_SMOOTH.min, Math.min(PHASE_SMOOTH.max, ms * PHASE_SMOOTH.fraction));
 
+/**
+ * Times the phases of one rep and measures its velocity.
+ * Returns null when there are too few frames or the joint barely moved.
+ */
 export function computeTempo(s: Sample[], o: TempoOptions): TempoResult | null {
   if (s.length < 6) return null;
   const t = s.map((x) => x.t);
@@ -209,6 +215,7 @@ function smooth(t: number[], v: number[], halfWidth: number): { value: number[];
   return { value, slope };
 }
 
+/** Median of a list, or null when empty. */
 function median(v: number[]): number | null {
   if (!v.length) return null;
   const a = [...v].sort((x, y) => x - y);
@@ -216,5 +223,6 @@ function median(v: number[]): number | null {
   return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
 }
 
+/** Rounds to 3 decimals (milliseconds / mm per second). */
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 const r3n = (n: number | null) => (n === null ? null : r3(n));

@@ -6,6 +6,7 @@ import { RecordingPlayerComponent } from '../videos/recording-player.component';
 import { EXERCISES, ExerciseId, FAULT_MESSAGES, PAUSE_LABELS, SetRecord } from '../../models/types';
 import { HistoryService } from '../../services/history.service';
 
+/** Sets of one exercise on one day, with totals. */
 interface ExerciseGroup {
   exercise: ExerciseId;
   sets: SetRecord[];
@@ -14,11 +15,13 @@ interface ExerciseGroup {
   best: number;
 }
 
+/** Everything done on one day. */
 interface DayGroup {
   day: number;
   groups: ExerciseGroup[];
 }
 
+/** History page: sets by day and exercise, per-rep detail, load correction and video popup. */
 @Component({
   selector: 'app-history',
   imports: [DatePipe, DecimalPipe, RecordingPlayerComponent],
@@ -28,16 +31,21 @@ interface DayGroup {
 export class HistoryComponent implements OnDestroy {
   private history = inject(HistoryService);
   private videos = inject(VideoStoreService);
+  /** Id of the set whose rep detail is open. */
   readonly expanded = signal<string | null>(null);
   readonly fmt2 = fmt2;
   readonly fmtLoad = fmtLoad;
+  /** Set whose video is open in the popup. */
   readonly playing = signal<{ set: SetRecord; meta: RecordingMeta } | null>(null);
+  /** Ids of recordings that still exist (sets whose video was deleted get no play button). */
   readonly videoIds = computed(() => new Set(this.videos.recordings().map((r) => r.id)));
   readonly ex = EXERCISES;
+  /** Exercise filter. */
   readonly filter = signal<ExerciseId | 'all'>('all');
   readonly exerciseIds: ExerciseId[] = ['squat', 'pushup', 'pullup'];
   readonly filters: (ExerciseId | 'all')[] = ['all', ...this.exerciseIds];
 
+  /** Sets grouped by day (newest first) and exercise. */
   readonly days = computed<DayGroup[]>(() => {
     const f = this.filter();
     const byDay = new Map<number, Map<ExerciseId, SetRecord[]>>();
@@ -63,37 +71,45 @@ export class HistoryComponent implements OnDestroy {
       }));
   });
 
+  /** Best set (valid reps) per exercise. */
   readonly records = computed(() => {
     const best: Partial<Record<ExerciseId, number>> = {};
     for (const s of this.history.sets()) best[s.exercise] = Math.max(best[s.exercise] ?? 0, s.valid);
     return best;
   });
 
+  /** Opens or closes the rep detail of a set. */
   toggle(s: SetRecord): void {
     this.expanded.update((id) => (id === s.id ? null : s.id));
   }
 
+  /** Average tempo of the valid reps. */
   avg(s: SetRecord): TempoAverages {
     return tempoAverages(s.reps);
   }
 
+  /** Velocity loss of the set (%). */
   loss(s: SetRecord): number | null {
     return velocityLoss(s.reps);
   }
 
+  /** Names of the two pauses for an exercise. */
   labels(ex: ExerciseId) {
     return PAUSE_LABELS[ex];
   }
 
+  /** Fault ids as readable text. */
   faultList(reasons: string[]): string {
     return reasons.map((r) => FAULT_MESSAGES[r] ?? r).join(' · ');
   }
 
+  /** Average frame rate the reps were measured at. */
   fpsOf(s: SetRecord): string {
     const f = (s.reps ?? []).map((r) => r.tempo?.fps).filter((x): x is number => !!x);
     return f.length ? String(Math.round(f.reduce((a, b) => a + b, 0) / f.length)) : '?';
   }
 
+  /** Opens the set video in the popup, if the recording still exists. */
   play(s: SetRecord): void {
     const meta = this.videos.recordings().find((r) => r.id === s.recordingId);
     if (!meta) return;
@@ -102,6 +118,7 @@ export class HistoryComponent implements OnDestroy {
   }
 
   @HostListener('document:keydown.escape')
+  /** Closes the video popup (also on Escape). */
   closePlayer(): void {
     if (!this.playing()) return;
     this.playing.set(null);
@@ -112,20 +129,24 @@ export class HistoryComponent implements OnDestroy {
     document.body.style.overflow = '';
   }
 
+  /** Text of a filter chip. */
   label(f: ExerciseId | 'all'): string {
     return f === 'all' ? 'Todo' : EXERCISES[f].name;
   }
 
+  /** Faults of the invalid reps, with counts. */
   reasons(s: SetRecord): string {
     return Object.entries(s.reasons)
       .map(([k, n]) => `${FAULT_MESSAGES[k] ?? k} ×${n}`)
       .join(', ');
   }
 
+  /** Set duration in seconds. */
   duration(s: SetRecord): string {
     return `${Math.max(1, Math.round((s.end - s.start) / 1000))} s`;
   }
 
+  /** Rest time as m:ss. */
   rest(sec: number | null): string {
     if (sec === null) return '—';
     return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
@@ -138,14 +159,17 @@ export class HistoryComponent implements OnDestroy {
     this.history.update(s.id, { loadKg: kg || undefined });
   }
 
+  /** Deletes a set after confirmation. */
   remove(s: SetRecord): void {
     if (confirm('¿Borrar esta serie?')) this.history.remove(s.id);
   }
 
+  /** Deletes the whole history after confirmation. */
   clearAll(): void {
     if (confirm('¿Borrar todo el historial? No se puede deshacer.')) this.history.clear();
   }
 
+  /** Downloads the history as a JSON file. */
   exportJson(): void {
     const blob = new Blob([this.history.exportJson()], { type: 'application/json' });
     const a = document.createElement('a');

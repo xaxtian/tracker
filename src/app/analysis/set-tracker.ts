@@ -27,10 +27,12 @@ export class SetTracker {
 
   constructor(private exercise: ExerciseId) {}
 
+  /** A set is in progress. */
   get active(): boolean {
     return this.current !== null;
   }
 
+  /** Adds a finished rep, starting a new set if none is open. */
   addRep(rep: RepResult): void {
     if (!this.current) {
       this.current = {
@@ -71,6 +73,7 @@ export class SetTracker {
     return off || idle ? this.finish() : null;
   }
 
+  /** Closes the current set (if any) and returns it. */
   finish(): SetRecord | null {
     const s = this.current;
     if (!s) return null;

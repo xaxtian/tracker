@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+/** App pages. Each one is loaded on first visit. */
 export const routes: Routes = [
   { path: '', loadComponent: () => import('./pages/home/home.component').then((m) => m.HomeComponent), title: 'TrackBody' },
   {

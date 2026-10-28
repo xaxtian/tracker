@@ -3,6 +3,7 @@ import { FrameEval } from './analyzers';
 import { CONNECTIONS } from './geometry';
 import { RepPhase } from './rep-counter';
 
+/** Skeleton colours for each state. */
 export const COLORS = {
   idle: '#9aa4b2',
   ready: '#38bdf8',
@@ -11,6 +12,7 @@ export const COLORS = {
   fault: '#ff4d4f',
 };
 
+/** Skeleton colour: grey out of position, red on a fault, amber while moving, green at depth, blue when ready. */
 export function poseColor(ev: FrameEval | null, phase: RepPhase): string {
   if (!ev?.ok || !ev.inPosition) return COLORS.idle;
   if (ev.faults.length) return COLORS.fault;
@@ -65,6 +67,7 @@ export function drawPose(ctx: CanvasRenderingContext2D, lm: Pt[], ev: FrameEval 
   }
 }
 
+/** Everything the recorded video shows on top of the camera image. */
 export interface HudState {
   title: string;
   valid: number;
@@ -78,7 +81,9 @@ export interface HudState {
   now: number;
 }
 
+/** How long a rep notification stays visible. */
 export const TOAST_MS = 2500;
+/** How long the end-of-set banner stays visible. */
 export const BANNER_MS = 4500;
 
 /** Draws counters and notifications (used for the recorded video). */
@@ -164,11 +169,13 @@ export function drawHud(ctx: CanvasRenderingContext2D, w: number, h: number, hud
   ctx.restore();
 }
 
+/** Opacity of a notification: solid for 80% of its life, then fades out. */
 function fade(age: number, total: number): number {
   const t = age / total;
   return t < 0.8 ? 1 : Math.max(0, 1 - (t - 0.8) / 0.2);
 }
 
+/** Seconds as m:ss. */
 function clock(sec: number): string {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
@@ -185,6 +192,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, max: number): void
   }
 }
 
+/** Filled (optionally outlined) rounded rectangle. */
 function box(
   ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fill: string, stroke?: string,
 ): void {

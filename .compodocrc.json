@@ -1,0 +1,12 @@
+{
+  "name": "TrackBody · Documentación",
+  "tsconfig": "tsconfig.doc.json",
+  "output": "docs",
+  "theme": "material",
+  "language": "es-ES",
+  "includes": "guia",
+  "includesName": "Guía",
+  "hideGenerator": true,
+  "unitTestCoverage": "coverage/coverage-summary.json",
+  "disableTemplatePlayground": true
+}

@@ -38,6 +38,7 @@ export interface Analyzer {
   evaluate(lm: Pt[], s: AppSettings): FrameEval;
 }
 
+/** Evaluation returned when the key joints are not visible. */
 const EMPTY: FrameEval = {
   ok: false, inPosition: false, angle: 0, extended: false, bottom: false, faults: [], metrics: {},
 };
@@ -45,6 +46,7 @@ const EMPTY: FrameEval = {
 // Segment lengths as a fraction of body height (Winter, Biomechanics of Human Movement).
 const THIGH = 0.245, SHANK = 0.246, TRUNK = 0.288, UPPER_ARM = 0.186, FOREARM = 0.146;
 
+/** Squat seen from the side: knee angle, hip depth, torso lean and (optionally) heel rise. */
 class SquatAnalyzer implements Analyzer {
   readonly noDepthFault = 'squatNoDepth';
   readonly flexIsEccentric = true;
@@ -110,6 +112,7 @@ class SquatAnalyzer implements Analyzer {
   }
 }
 
+/** Push-up seen from the side: elbow angle, straight body line and straight knees. */
 class PushupAnalyzer implements Analyzer {
   readonly noDepthFault = 'pushupNoDepth';
   readonly flexIsEccentric = true;
@@ -165,6 +168,7 @@ class PushupAnalyzer implements Analyzer {
   }
 }
 
+/** Pull-up seen from the front: elbow angle, chin over the hands, no swinging and no kipping. */
 class PullupAnalyzer implements Analyzer {
   readonly noDepthFault = 'pullupNoDepth';
   readonly flexIsEccentric = false;
@@ -234,6 +238,7 @@ class PullupAnalyzer implements Analyzer {
   }
 }
 
+/** Creates the analyzer that implements the strictness criteria of an exercise. */
 export function createAnalyzer(ex: ExerciseId): Analyzer {
   switch (ex) {
     case 'squat': return new SquatAnalyzer();

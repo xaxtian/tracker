@@ -37,6 +37,38 @@ El móvil solo da acceso a la cámara por HTTPS. Con `start:mobile` el certifica
   los avisos dibujados encima (canvas + MediaRecorder). Se guardan en IndexedDB en trozos de 2 s, solo en el dispositivo.
   Cada serie queda marcada en el vídeo para saltar a ella; se pueden descargar o compartir (galería, WhatsApp…).
 
+## Tests
+
+Tests unitarios con Jest (`jest-preset-angular`, modo zoneless). Cubren la lógica de análisis, los servicios y todas
+las pantallas, más una prueba de integración que pasa dos sentadillas simuladas por todo el proceso.
+
+```bash
+npm test               # todos los tests
+npm run test:watch     # se repiten al guardar
+npm run test:coverage  # con cobertura en coverage/index.html
+npm run test:types     # comprueba los tipos de los tests
+```
+
+Las utilidades de test (poses sintéticas, movimientos con tiempos conocidos, mocks del navegador) están en
+[src/testing/](src/testing/).
+
+## Documentación
+
+```bash
+npm run docs        # genera la documentación en docs/ (abre docs/index.html)
+npm run docs:serve  # la genera y la sirve en http://localhost:8080
+```
+
+Se genera con Compodoc e incluye:
+
+- una **guía con diagramas** ([guia/](guia/)): arquitectura, pantallas, el recorrido de cada fotograma, la máquina de
+  estados de las repeticiones, las series, el cálculo de tempo y velocidad, la grabación, los datos y los ajustes;
+- la **referencia de cada componente, servicio, clase, interfaz y función**, con su código, plantilla y dependencias;
+- el gráfico de rutas, la cobertura de la documentación y la de los tests.
+
+Los capítulos de la guía son Markdown con diagramas Mermaid; [scripts/docs-mermaid.js](scripts/docs-mermaid.js) los
+activa en la web generada.
+
 ## Colocación de la cámara
 
 - Sentadillas y flexiones: **de lado**, a 2-3 m, con el cuerpo entero en el encuadre.

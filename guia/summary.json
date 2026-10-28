@@ -1,0 +1,12 @@
+[
+  { "title": "Visión general", "file": "01-vision-general.md" },
+  { "title": "Pantallas y navegación", "file": "02-pantallas.md" },
+  { "title": "Del vídeo al contador", "file": "03-fotograma.md" },
+  { "title": "Repeticiones estrictas", "file": "04-repeticiones.md" },
+  { "title": "Series automáticas", "file": "05-series.md" },
+  { "title": "Tempo y velocidad", "file": "06-tempo.md" },
+  { "title": "Grabación de vídeo", "file": "07-videos.md" },
+  { "title": "Datos y almacenamiento", "file": "08-datos.md" },
+  { "title": "Ajustes", "file": "09-ajustes.md" },
+  { "title": "Tests", "file": "10-tests.md" }
+]

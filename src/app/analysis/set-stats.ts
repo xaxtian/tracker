@@ -30,6 +30,7 @@ export function velocityLoss(reps: RepRecord[] | undefined): number | null {
   return Math.max(0, ((best - v[v.length - 1]) / best) * 100);
 }
 
+/** Average tempo of the valid reps of a set. */
 export interface TempoAverages {
   eccentricSec: number | null;
   concentricSec: number | null;
@@ -37,6 +38,7 @@ export interface TempoAverages {
   bestConVel: number | null;
 }
 
+/** Average eccentric and concentric time and velocity of the valid reps, plus the best velocity. */
 export function tempoAverages(reps: RepRecord[] | undefined): TempoAverages {
   const t = (reps ?? []).filter((r) => r.valid && r.tempo).map((r) => r.tempo!);
   const avg = (xs: (number | null)[]) => {

@@ -3,6 +3,7 @@ import { HudState, PoseDrawOptions, drawHud, drawPose } from '../analysis/overla
 import { ExerciseId, Pt, SetRecord } from '../models/types';
 import { RecordingMeta, VideoStoreService } from './video-store.service';
 
+/** Video formats in order of preference: MP4 plays everywhere, WebM is the fallback. */
 const MIME_CANDIDATES = [
   'video/mp4;codecs=avc1',
   'video/mp4',
@@ -11,6 +12,7 @@ const MIME_CANDIDATES = [
   'video/webm',
 ];
 
+/** The browser can record a canvas. */
 export function recordingSupported(): boolean {
   return typeof MediaRecorder !== 'undefined' && 'captureStream' in HTMLCanvasElement.prototype;
 }
@@ -20,6 +22,7 @@ export function recordingSupported(): boolean {
  * by drawing everything on an off-screen canvas and capturing it.
  */
 export class SessionRecorder {
+  /** Metadata of the recording, updated while recording. */
   readonly meta: RecordingMeta;
   private canvas = document.createElement('canvas');
   private ctx: CanvasRenderingContext2D;
@@ -69,10 +72,12 @@ export class SessionRecorder {
     this.stopped = new Promise((resolve) => (this.rec.onstop = () => resolve()));
   }
 
+  /** Seconds since recording started. */
   get elapsedSec(): number {
     return (Date.now() - this.meta.start) / 1000;
   }
 
+  /** Saves the metadata and starts recording. */
   async start(): Promise<void> {
     await this.store.putMeta(this.meta);
     // Small timeslice: data is flushed to IndexedDB every 2 s.
@@ -119,6 +124,7 @@ export class SessionRecorder {
     return startSec;
   }
 
+  /** Stops recording, waits for the last chunk to be stored and returns the final metadata. */
   async stop(): Promise<RecordingMeta> {
     if (this.rec.state !== 'inactive') {
       this.rec.stop();

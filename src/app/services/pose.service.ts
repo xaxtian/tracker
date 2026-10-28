@@ -1,12 +1,14 @@
 import { Injectable } from '@angular/core';
 import { FilesetResolver, NormalizedLandmark, PoseLandmarker } from '@mediapipe/tasks-vision';
 
+/** Wraps MediaPipe Pose Landmarker: loads the model and finds the body in each video frame. */
 @Injectable({ providedIn: 'root' })
 export class PoseService {
   private landmarker: PoseLandmarker | null = null;
   private model: string | null = null;
   private lastTs = -1;
 
+  /** Loads the model (GPU, falling back to CPU). Does nothing if it is already loaded. */
   async init(model: 'lite' | 'full'): Promise<void> {
     if (this.landmarker && this.model === model) return;
     this.landmarker?.close();

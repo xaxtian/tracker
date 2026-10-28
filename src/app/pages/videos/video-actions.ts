@@ -1,6 +1,7 @@
 import { EXERCISES } from '../../models/types';
 import { RecordingMeta, VideoStoreService, fileExtension } from '../../services/video-store.service';
 
+/** File name like `trackbody_sentadillas_2026-10-28_18-05.mp4`. */
 export function recordingFileName(r: RecordingMeta): string {
   const d = new Date(r.start);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -9,6 +10,7 @@ export function recordingFileName(r: RecordingMeta): string {
   return `trackbody_${name}_${stamp}.${fileExtension(r.mime)}`;
 }
 
+/** Downloads a recording through a temporary link. */
 export async function downloadRecording(store: VideoStoreService, r: RecordingMeta, blob?: Blob): Promise<void> {
   blob ??= await store.getBlob(r);
   const url = URL.createObjectURL(blob);
@@ -34,6 +36,7 @@ export async function shareRecording(store: VideoStoreService, r: RecordingMeta,
   return true;
 }
 
+/** The browser can share video files (mobile share sheet). */
 export function canShareFiles(): boolean {
   try {
     return !!navigator.canShare?.({ files: [new File([''], 'x.mp4', { type: 'video/mp4' })] });

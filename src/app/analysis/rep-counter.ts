@@ -2,8 +2,10 @@ import { Pt, RepResult } from '../models/types';
 import { Analyzer, FrameEval } from './analyzers';
 import { Sample, computeTempo } from './tempo';
 
+/** State of the rep counter: waiting for extension, ready at the top, or in the middle of a rep. */
 export type RepPhase = 'idle' | 'top' | 'moving';
 
+/** Settings the rep counter needs on every frame. */
 export interface RepOptions {
   minRange: number;
   faultFrames: number;
@@ -18,10 +20,12 @@ const BUFFER_MS = 20_000;
 const PRE_ROLL_MS = 4_000;
 /** After full extension, wait for the movement to settle (max) before timing the rep. */
 const SETTLE_MAX_MS = 700;
+/** Minimum wait after extension before a rep can be announced. */
 const SETTLE_MIN_MS = 150;
 /** The joint counts as still when it moves less than this (deg) over SETTLE_MIN_MS. */
 const STILL_DEG = 2;
 
+/** A finished rep that waits for the joint to settle before being timed. */
 interface PendingRep {
   result: RepResult;
   from: number;
@@ -72,6 +76,7 @@ export class RepCounter {
     return flushed;
   }
 
+  /** Feeds one frame. Returns a rep when one is completed and timed, otherwise null. */
   update(ev: FrameEval, lm: Pt[], now: number, o: RepOptions): RepResult | null {
     this.opts = o;
     if (!ev.ok) {
@@ -180,6 +185,7 @@ export class RepCounter {
     return r;
   }
 
+  /** Starts a new rep: resets depth and fault tracking and stores the analyzer baselines. */
   private begin(lm: Pt[], now: number, fromTop: boolean, angle: number): void {
     this.phase = 'moving';
     this.start = now;
@@ -192,6 +198,7 @@ export class RepCounter {
     this.analyzer.startRep(lm);
   }
 
+  /** Confirms a fault once it has been seen in `faultFrames` consecutive frames. */
   private trackFaults(ev: FrameEval, faultFrames: number): void {
     const current = new Set(ev.faults);
     for (const f of current) {
@@ -204,6 +211,7 @@ export class RepCounter {
     }
   }
 
+  /** Builds the result of a rep from its depth, start, lockout and confirmed faults. */
   private judge(now: number, lockedOut: boolean): RepResult {
     const reasons: string[] = [];
     if (!this.bottomReached) reasons.push(this.analyzer.noDepthFault);

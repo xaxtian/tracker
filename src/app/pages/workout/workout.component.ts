@@ -17,13 +17,22 @@ import { SettingsService } from '../../services/settings.service';
 import { SessionRecorder, recordingSupported } from '../../services/session-recorder';
 import { RecordingMeta, VideoStoreService, formatClock } from '../../services/video-store.service';
 
+/** Camera and model state. */
 type Status = 'off' | 'loading' | 'running' | 'error';
 
+/** localStorage key of the last camera used. */
 const CAMERA_KEY = 'trackbody.camera';
+/** localStorage key of the load per exercise. */
 const LOAD_KEY = 'trackbody.load';
+/** kg added or removed by the −/+ buttons. */
 const LOAD_STEP = 2.5;
+/** Allowed load range in kg (negative = assistance). */
 const LOAD_LIMITS = { min: -100, max: 500 };
 
+/**
+ * Training screen: camera, pose analysis, rep counting, automatic sets,
+ * tempo, load and recording. `onFrame()` runs once per camera frame.
+ */
 @Component({
   selector: 'app-workout',
   imports: [RouterLink, DecimalPipe, KeyValuePipe],
@@ -45,18 +54,30 @@ export class WorkoutComponent implements OnDestroy {
   private videoRef = viewChild.required<ElementRef<HTMLVideoElement>>('video');
   private canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
 
+  /** Camera and model state. */
   readonly status = signal<Status>('off');
   readonly error = signal('');
+  /** Front (`user`) or rear (`environment`) camera. */
   readonly facing = signal<'user' | 'environment'>('user');
+  /** Specific camera chosen in the list, if any. */
   readonly deviceId = signal<string | null>(null);
+  /** Video cameras available. */
   readonly cameras = signal<MediaDeviceInfo[]>([]);
+  /** Instruction shown when the person is not detected or not in position. */
   readonly hint = signal('');
+  /** A set is in progress. */
   readonly inSet = signal(false);
+  /** Valid reps in the current set. */
   readonly valid = signal(0);
+  /** Invalid reps in the current set. */
   readonly invalid = signal(0);
+  /** Seconds since the last set ended. */
   readonly restSec = signal<number | null>(null);
+  /** Last rep notification (the id restarts its animation). */
   readonly lastRep = signal<{ ok: boolean; text: string; id: number } | null>(null);
+  /** Live angles shown under the video. */
   readonly metrics = signal<Record<string, number>>({});
+  /** Sets finished since the page was opened. */
   readonly sessionSets = signal<SetRecord[]>([]);
   readonly setNumber = computed(() => this.sessionSets().length + (this.inSet() ? 1 : 0));
   readonly lastRepList = computed(() => {
@@ -64,14 +85,18 @@ export class WorkoutComponent implements OnDestroy {
     return r ? [r] : [];
   });
   readonly noSort = () => 0;
+  /** End-of-set banner. */
   readonly setBanner = signal<{ title: string; detail: string; id: number } | null>(null);
   readonly setBannerList = computed(() => {
     const b = this.setBanner();
     return b ? [b] : [];
   });
   readonly canRecord = recordingSupported();
+  /** A recording is in progress. */
   readonly recording = signal(false);
+  /** Recording length (s). */
   readonly recSec = signal(0);
+  /** Recording saved last, for the "Ver vídeo" link. */
   readonly lastRecording = signal<RecordingMeta | null>(null);
   readonly formatClock = formatClock;
   readonly fmt2 = fmt2;
@@ -149,6 +174,7 @@ export class WorkoutComponent implements OnDestroy {
     }
   }
 
+  /** Loads the model, opens the camera and starts analysing frames. */
   async start(): Promise<void> {
     this.fb.unlock();
     this.status.set('loading');
@@ -165,6 +191,7 @@ export class WorkoutComponent implements OnDestroy {
     }
   }
 
+  /** Closes the current set, stops recording and releases the camera. */
   async stop(): Promise<void> {
     this.flushRep();
     this.endSet();
@@ -176,6 +203,7 @@ export class WorkoutComponent implements OnDestroy {
     this.hint.set('');
   }
 
+  /** Starts or stops recording. */
   async toggleRecording(): Promise<void> {
     if (this.recording()) await this.stopRecording();
     else await this.startRecording();
@@ -252,12 +280,14 @@ export class WorkoutComponent implements OnDestroy {
     void this.stop();
   }
 
+  /** Faults of a set, with counts. */
   reasonsOf(set: SetRecord): string {
     return Object.entries(set.reasons)
       .map(([k, n]) => `${FAULT_MESSAGES[k] ?? k} ×${n}`)
       .join(', ');
   }
 
+  /** Seconds as m:ss. */
   formatRest(sec: number): string {
     const m = Math.floor(sec / 60);
     return `${m}:${String(sec % 60).padStart(2, '0')}`;
@@ -265,6 +295,7 @@ export class WorkoutComponent implements OnDestroy {
 
   // ---------------------------------------------------------------------------
 
+  /** Opens the camera, trying the chosen device, then the exact facing mode, then a plain hint. */
   private async openCamera(): Promise<void> {
     const video = this.videoRef().nativeElement;
     const size = {
@@ -338,6 +369,7 @@ export class WorkoutComponent implements OnDestroy {
     this.smoothed = null;
   }
 
+  /** Starts the per-frame loop. */
   private startLoop(): void {
     this.stopLoop();
     this.looping = true;
@@ -378,6 +410,7 @@ export class WorkoutComponent implements OnDestroy {
     return media + this.frameOffset;
   }
 
+  /** Analyses one camera frame: pose → evaluation → rep counter → set tracker → screen and video. */
   private onFrame(frameT: number): void {
     this.schedule();
     const video = this.videoRef().nativeElement;
@@ -432,6 +465,7 @@ export class WorkoutComponent implements OnDestroy {
     if (r) this.onRep(r);
   }
 
+  /** Rep counter settings for the current exercise. */
   private repOptions(s: AppSettings): RepOptions {
     const ex = s[this.exercise];
     return {
@@ -442,6 +476,7 @@ export class WorkoutComponent implements OnDestroy {
     };
   }
 
+  /** When a set ends for this exercise (see the guide, "Series automáticas"). */
   private endRules(): SetEndRules {
     const g = this.settings().general;
     switch (this.exercise) {
@@ -454,6 +489,7 @@ export class WorkoutComponent implements OnDestroy {
     }
   }
 
+  /** Updates counters and gives feedback for a finished rep. */
   private onRep(rep: RepResult): void {
     const newSet = !this.tracker.active;
     this.tracker.addRep(rep);
@@ -485,6 +521,7 @@ export class WorkoutComponent implements OnDestroy {
     if (g.beep) this.fb.beep(rep.valid);
   }
 
+  /** Saves a finished set with its load, marks it in the video and announces it. */
   private onSetEnded(set: SetRecord): void {
     this.inSet.set(false);
     const index = this.sessionSets().length + 1;
@@ -531,6 +568,7 @@ export class WorkoutComponent implements OnDestroy {
     };
   }
 
+  /** What to tell the person when they are not detected or not ready. */
   private hintFor(detected: boolean, ev: FrameEval | null): string {
     if (!detected) return 'No te veo. Colócate delante de la cámara.';
     if (!ev?.ok) return 'No se ven bien tus articulaciones. Aléjate o mejora la luz.';
@@ -543,6 +581,7 @@ export class WorkoutComponent implements OnDestroy {
     return '';
   }
 
+  /** MediaPipe landmarks (0..1) to video pixels, with exponential smoothing. */
   private toPixels(raw: NormalizedLandmark[], w: number, h: number, smoothing: number): Pt[] {
     const pts = raw.map((p) => ({ x: p.x * w, y: p.y * h, v: p.visibility ?? 1 }));
     const prev = this.smoothed;
@@ -557,6 +596,7 @@ export class WorkoutComponent implements OnDestroy {
     return pts;
   }
 
+  /** Draws the skeleton on screen and, when recording, the full video frame. */
   private draw(video: HTMLVideoElement, lm: Pt[] | null, ev: FrameEval | null): void {
     const canvas = this.canvasRef().nativeElement;
     if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
@@ -580,6 +620,7 @@ export class WorkoutComponent implements OnDestroy {
     }
   }
 
+  /** Readable message for a camera error. */
   private describeError(e: unknown): string {
     const name = (e as { name?: string })?.name;
     if (name === 'NotAllowedError') return 'Permiso de cámara denegado. Actívalo en los ajustes del navegador.';

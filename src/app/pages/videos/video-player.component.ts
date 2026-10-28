@@ -5,6 +5,7 @@ import { EXERCISES } from '../../models/types';
 import { RecordingMeta, VideoStoreService, formatBytes, formatClock } from '../../services/video-store.service';
 import { RecordingPlayerComponent } from './recording-player.component';
 
+/** Page of one recording (`/videos/:id`, optional `?t=` start second). */
 @Component({
   selector: 'app-video-player',
   imports: [RouterLink, DatePipe, RecordingPlayerComponent],
@@ -40,6 +41,7 @@ export class VideoPlayerComponent {
   readonly bytes = formatBytes;
   readonly meta = signal<RecordingMeta | null>(null);
   readonly error = signal('');
+  /** Second to start from, from the `t` query parameter. */
   readonly startAt = Number(this.route.snapshot.queryParamMap.get('t') ?? 0) || 0;
 
   constructor() {
@@ -53,6 +55,7 @@ export class VideoPlayerComponent {
     else this.error.set('Este vídeo ya no existe.');
   }
 
+  /** Deletes the recording and goes back to the list. */
   async remove(m: RecordingMeta): Promise<void> {
     if (!confirm('¿Borrar este vídeo? No se puede deshacer.')) return;
     await this.store.remove(m.id);
