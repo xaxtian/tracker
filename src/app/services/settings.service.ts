@@ -13,6 +13,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     beep: true,
     showAngles: true,
     autoRecord: false,
+    highFps: true,
+    userHeightCm: 175,
     model: 'full',
   },
   squat: {
@@ -23,18 +25,24 @@ export const DEFAULT_SETTINGS: AppSettings = {
     maxTorsoLean: 50,
     checkHeels: false,
     heelTolerance: 0.08,
+    checkEccentric: false,
+    minEccentricSec: 1.5,
   },
   pushup: {
     topElbowAngle: 160,
     bottomElbowAngle: 90,
     minBodyLineAngle: 160,
     minKneeAngle: 150,
+    checkEccentric: false,
+    minEccentricSec: 1.5,
   },
   pullup: {
     hangElbowAngle: 160,
     chinMargin: 0,
     maxHipSwing: 0.3,
     maxKneeAngleChange: 45,
+    checkEccentric: false,
+    minEccentricSec: 1.5,
   },
 };
 

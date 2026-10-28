@@ -40,6 +40,19 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .ko { color: var(--ko); font-weight: 700; }
 .reasons td { text-align: left; font-size: 12px; color: var(--muted); }
 
+.set-row { cursor: pointer; &:hover td { background: rgba(56, 189, 248, 0.06); } }
+.set-row.open td { border-bottom-color: transparent; }
+.caret { color: var(--muted); font-size: 11px; }
+.vel { color: var(--accent); font-weight: 600; }
+.warn { color: #f59e0b; font-weight: 700; }
+.detail > td { text-align: left; padding: 4px 6px 12px; background: var(--bg); }
+.summary { margin: 6px 0; font-size: 13px; color: var(--muted); }
+.scroll { overflow-x: auto; }
+.reps { font-size: 12px; min-width: 420px; th, td { padding: 4px 3px; } }
+.reps tr.bad td { color: var(--muted); }
+.reps .why td { text-align: left; font-size: 11px; color: var(--ko); border-bottom: 1px solid var(--line); }
+.note { margin: 6px 0 0; font-size: 11px; color: var(--muted); }
+
 .row-acts { white-space: nowrap; }
 .icon-btn { text-decoration: none; color: var(--text);  background: none; border: none; cursor: pointer; font-size: 16px; opacity: 0.6; &:hover { opacity: 1; } }
 

@@ -21,10 +21,18 @@ export interface FrameEval {
   metrics: Record<string, number>;
   /** Point where the primary angle is drawn. */
   joint?: Pt;
+  /** Vertical pixel position of the point whose velocity is measured. */
+  trackY?: number;
+  /** Pixel length of the reference segments used to convert px to metres. */
+  bodyPx?: number;
 }
 
 export interface Analyzer {
   readonly noDepthFault: string;
+  /** Closing the joint is the eccentric phase (squat, push-up) or the concentric one (pull-up). */
+  readonly flexIsEccentric: boolean;
+  /** Fraction of body height covered by the segments summed in bodyPx (Winter's anthropometric ratios). */
+  readonly bodyRatio: number;
   /** Called when a rep starts, to store baselines (hip position, knee angle…). */
   startRep(lm: Pt[]): void;
   evaluate(lm: Pt[], s: AppSettings): FrameEval;
@@ -34,8 +42,13 @@ const EMPTY: FrameEval = {
   ok: false, inPosition: false, angle: 0, extended: false, bottom: false, faults: [], metrics: {},
 };
 
+// Segment lengths as a fraction of body height (Winter, Biomechanics of Human Movement).
+const THIGH = 0.245, SHANK = 0.246, TRUNK = 0.288, UPPER_ARM = 0.186, FOREARM = 0.146;
+
 class SquatAnalyzer implements Analyzer {
   readonly noDepthFault = 'squatNoDepth';
+  readonly flexIsEccentric = true;
+  readonly bodyRatio = THIGH + SHANK + TRUNK;
   private side = new SidePicker();
   private heelBase = 0;
 
@@ -91,12 +104,16 @@ class SquatAnalyzer implements Analyzer {
       faults,
       metrics: { rodilla: knee, tronco: lean, profundidad: hipDepth * 100 },
       joint: p.knee,
+      trackY: p.hip.y,
+      bodyPx: thigh + shin + dist(p.sh, p.hip),
     };
   }
 }
 
 class PushupAnalyzer implements Analyzer {
   readonly noDepthFault = 'pushupNoDepth';
+  readonly flexIsEccentric = true;
+  readonly bodyRatio = THIGH + SHANK + TRUNK;
   private side = new SidePicker();
 
   startRep(): void {}
@@ -142,12 +159,16 @@ class PushupAnalyzer implements Analyzer {
       faults,
       metrics: { codo: elbow, cuerpo: bodyLine, rodilla: kneeAngle },
       joint: el,
+      trackY: sh.y,
+      bodyPx: hasAnkle ? dist(sh, hip) + dist(hip, knee) + dist(knee, ankle) : undefined,
     };
   }
 }
 
 class PullupAnalyzer implements Analyzer {
   readonly noDepthFault = 'pullupNoDepth';
+  readonly flexIsEccentric = false;
+  readonly bodyRatio = TRUNK + UPPER_ARM + FOREARM;
   private baseHipX = 0;
   private baseKnee: number | null = null;
   private lastMin = 0.5;
@@ -205,6 +226,10 @@ class PullupAnalyzer implements Analyzer {
       faults,
       metrics: { codo: elbow, barbilla: chinOver * 100, ...(knee !== null ? { rodilla: knee } : {}) },
       joint: arms.length ? lm[arms[0][1]] : undefined,
+      trackY: shoulders.y,
+      bodyPx: hip.v >= min
+        ? dist(shoulders, hip) + arms.reduce((n, [a, b, c]) => n + dist(lm[a], lm[b]) + dist(lm[b], lm[c]), 0) / arms.length
+        : undefined,
     };
   }
 }

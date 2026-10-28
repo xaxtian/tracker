@@ -42,10 +42,14 @@ export class SetTracker {
         invalid: 0,
         reasons: {},
         restBeforeSec: this.lastSetEnd ? Math.round((rep.start - this.lastSetEnd) / 1000) : null,
+        reps: [],
       };
+      // The pause before the first rep of a set is rest, not part of the set.
+      if (rep.tempo) rep.tempo = { ...rep.tempo, pauseBetweenSec: null };
     }
     const s = this.current;
     s.end = rep.end;
+    (s.reps ??= []).push({ valid: rep.valid, reasons: rep.reasons, ...(rep.tempo ? { tempo: rep.tempo } : {}) });
     if (rep.valid) s.valid++;
     else {
       s.invalid++;

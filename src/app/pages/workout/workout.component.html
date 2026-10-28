@@ -90,6 +90,29 @@
     <button class="btn danger" (click)="stop()">Parar</button>
   </div>
 
+  @if (lastTempo(); as t) {
+    <section class="tempo">
+      <h2>Última repetición</h2>
+      <div class="tempo-grid">
+        <div><small>↓ Excéntrica</small><b>{{ fmt2(t.eccentricSec) }} s</b></div>
+        <div><small>{{ pauseLabels.turn }}</small><b>{{ fmt2(t.pauseTurnSec) }} s</b></div>
+        <div><small>↑ Concéntrica</small><b>{{ fmt2(t.concentricSec) }} s</b></div>
+        <div><small>{{ pauseLabels.between }}</small><b>{{ t.pauseBetweenSec === null ? '—' : fmt2(t.pauseBetweenSec) + ' s' }}</b></div>
+        <div class="vel"><small>Vel. media ↑</small><b>{{ fmt2(t.meanConVel) }} m/s</b></div>
+        <div class="vel"><small>Vel. pico ↑</small><b>{{ fmt2(t.peakConVel) }} m/s</b></div>
+        <div><small>Vel. media ↓</small><b>{{ fmt2(t.meanEccVel) }} m/s</b></div>
+        <div [class.warn]="(setVelLoss() ?? 0) >= 20">
+          <small>Pérdida vel. serie</small><b>{{ setVelLoss() === null ? '—' : (setVelLoss()! | number: '1.0-0') + ' %' }}</b>
+        </div>
+      </div>
+      <p class="fps">
+        Medido a {{ t.fps }} fps · cámara {{ cameraFps() ?? '?' }} fps · análisis {{ analysisFps() ?? '?' }} fps
+      </p>
+    </section>
+  } @else {
+    <p class="fps">Cámara {{ cameraFps() ?? '?' }} fps · análisis {{ analysisFps() ?? '?' }} fps</p>
+  }
+
   @if (settings().general.showAngles) {
     <div class="metrics">
       @for (m of metrics() | keyvalue: noSort; track m.key) {
@@ -113,7 +136,7 @@
   } @else {
     <table class="sets">
       <thead>
-        <tr><th>#</th><th>Válidas</th><th>No válidas</th><th>Descanso previo</th></tr>
+        <tr><th>#</th><th>Válidas</th><th>No válidas</th><th>Pérdida vel.</th><th>Descanso previo</th></tr>
       </thead>
       <tbody>
         @for (s of sessionSets(); track s.id; let i = $index) {
@@ -121,10 +144,11 @@
             <td>{{ i + 1 }}</td>
             <td class="ok">{{ s.valid }}</td>
             <td [class.ko]="s.invalid > 0" [title]="reasonsOf(s)">{{ s.invalid }}</td>
+            <td>{{ velocityLoss(s.reps) === null ? '—' : (velocityLoss(s.reps)! | number: '1.0-0') + ' %' }}</td>
             <td>{{ s.restBeforeSec !== null ? formatRest(s.restBeforeSec) : '—' }}</td>
           </tr>
           @if (s.invalid > 0) {
-            <tr class="reasons"><td></td><td colspan="3">{{ reasonsOf(s) }}</td></tr>
+            <tr class="reasons"><td></td><td colspan="4">{{ reasonsOf(s) }}</td></tr>
           }
         }
       </tbody>

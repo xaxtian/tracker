@@ -35,25 +35,72 @@
         </div>
         <table>
           <thead>
-            <tr><th>Hora</th><th>Válidas</th><th>No válidas</th><th>Duración</th><th>Descanso</th><th></th></tr>
+            <tr><th>Hora</th><th>Válidas</th><th>No válidas</th><th>Vel. ↑</th><th>Pérdida</th><th>Descanso</th><th></th></tr>
           </thead>
           <tbody>
             @for (s of g.sets; track s.id) {
-              <tr>
-                <td>{{ s.start | date: 'HH:mm' }}</td>
+              <tr class="set-row" [class.open]="expanded() === s.id" (click)="toggle(s)"
+                  [attr.aria-expanded]="expanded() === s.id" title="Ver detalle de cada repetición">
+                <td><span class="caret">{{ expanded() === s.id ? '▾' : '▸' }}</span> {{ s.start | date: 'HH:mm' }}</td>
                 <td class="ok">{{ s.valid }}</td>
                 <td [class.ko]="s.invalid > 0">{{ s.invalid }}</td>
-                <td>{{ duration(s) }}</td>
+                <td class="vel">{{ fmt2(avg(s).meanConVel) }}</td>
+                <td [class.warn]="(loss(s) ?? 0) >= 20">{{ loss(s) === null ? '—' : (loss(s)! | number: '1.0-0') + '%' }}</td>
                 <td>{{ rest(s.restBeforeSec) }}</td>
                 <td class="row-acts">
                   @if (s.recordingId && videoIds().has(s.recordingId)) {
-                    <button class="icon-btn" (click)="play(s)" aria-label="Ver vídeo de la serie">▶</button>
+                    <button class="icon-btn" (click)="play(s); $event.stopPropagation()" aria-label="Ver vídeo de la serie">▶</button>
                   }
-                  <button class="icon-btn" (click)="remove(s)" aria-label="Borrar serie">🗑</button>
+                  <button class="icon-btn" (click)="remove(s); $event.stopPropagation()" aria-label="Borrar serie">🗑</button>
                 </td>
               </tr>
-              @if (s.invalid > 0) {
-                <tr class="reasons"><td></td><td colspan="5">{{ reasons(s) }}</td></tr>
+              @if (s.invalid > 0 && expanded() !== s.id) {
+                <tr class="reasons"><td></td><td colspan="6">{{ reasons(s) }}</td></tr>
+              }
+              @if (expanded() === s.id) {
+                <tr class="detail">
+                  <td colspan="7">
+                    <p class="summary">
+                      Duración {{ duration(s) }}
+                      @if (avg(s); as a) {
+                        · ↓ media {{ fmt2(a.eccentricSec) }} s · ↑ media {{ fmt2(a.concentricSec) }} s
+                        · mejor {{ fmt2(a.bestConVel) }} m/s
+                      }
+                    </p>
+                    @if (s.reps?.length) {
+                      <div class="scroll">
+                        <table class="reps">
+                          <thead>
+                            <tr>
+                              <th>#</th><th></th><th>↓ Exc.</th><th>{{ labels(g.exercise).turn }}</th><th>↑ Conc.</th>
+                              <th>{{ labels(g.exercise).between }}</th><th>m/s ↑</th><th>Pico ↑</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (r of s.reps; track $index) {
+                              <tr [class.bad]="!r.valid">
+                                <td>{{ $index + 1 }}</td>
+                                <td [class.ok]="r.valid" [class.ko]="!r.valid">{{ r.valid ? '✓' : '✗' }}</td>
+                                <td>{{ fmt2(r.tempo?.eccentricSec) }}</td>
+                                <td>{{ fmt2(r.tempo?.pauseTurnSec) }}</td>
+                                <td>{{ fmt2(r.tempo?.concentricSec) }}</td>
+                                <td>{{ fmt2(r.tempo?.pauseBetweenSec) }}</td>
+                                <td class="vel">{{ fmt2(r.tempo?.meanConVel) }}</td>
+                                <td>{{ fmt2(r.tempo?.peakConVel) }}</td>
+                              </tr>
+                              @if (!r.valid) {
+                                <tr class="why"><td></td><td colspan="7">{{ faultList(r.reasons) }}</td></tr>
+                              }
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                      <p class="note">Tiempos en segundos. Medido a {{ fpsOf(s) }} fps.</p>
+                    } @else {
+                      <p class="note">Esta serie se grabó antes de medir el tempo y no tiene detalle por repetición.</p>
+                    }
+                  </td>
+                </tr>
               }
             }
           </tbody>

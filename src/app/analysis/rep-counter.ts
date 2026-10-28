@@ -1,7 +1,32 @@
 import { Pt, RepResult } from '../models/types';
 import { Analyzer, FrameEval } from './analyzers';
+import { Sample, computeTempo } from './tempo';
 
 export type RepPhase = 'idle' | 'top' | 'moving';
+
+export interface RepOptions {
+  minRange: number;
+  faultFrames: number;
+  /** Minimum eccentric duration in seconds, or null when the check is off. */
+  minEccentricSec: number | null;
+  heightM: number;
+}
+
+/** Samples older than this are dropped from the trajectory buffer. */
+const BUFFER_MS = 20_000;
+/** How far before the rep trigger the trajectory is searched for the real start. */
+const PRE_ROLL_MS = 4_000;
+/** After full extension, wait for the movement to settle (max) before timing the rep. */
+const SETTLE_MAX_MS = 700;
+const SETTLE_MIN_MS = 150;
+/** The joint counts as still when it moves less than this (deg) over SETTLE_MIN_MS. */
+const STILL_DEG = 2;
+
+interface PendingRep {
+  result: RepResult;
+  from: number;
+  finishT: number;
+}
 
 /**
  * Generic rep state machine for "extended -> flexed -> extended" movements
@@ -10,6 +35,9 @@ export type RepPhase = 'idle' | 'top' | 'moving';
  * idle   : waiting for the first full extension.
  * top    : fully extended, ready for a rep.
  * moving : rep in progress; tracks depth and faults until extension returns.
+ *
+ * A completed rep is emitted a moment later (when the joint settles, at most
+ * SETTLE_MAX_MS), so that its tempo can be measured over the whole movement.
  */
 export class RepCounter {
   phase: RepPhase = 'idle';
@@ -21,65 +49,135 @@ export class RepCounter {
   private peakAfterBottom = 0;
   private faultStreak = new Map<string, number>();
   private faults = new Set<string>();
+  private topRef = 180;
+
+  private samples: Sample[] = [];
+  /** Trajectory before this time belongs to an earlier rep or to getting into position. */
+  private windowFrom = -Infinity;
+  private lastEndT: number | null = null;
+  private pending: PendingRep | null = null;
+  private opts: RepOptions | null = null;
 
   constructor(private analyzer: Analyzer) {}
 
-  reset(): void {
+  /** Clears the state. Returns a rep that was still waiting to be timed, if any. */
+  reset(): RepResult | null {
+    const flushed = this.resolvePending();
     this.phase = 'idle';
     this.faultStreak.clear();
     this.faults.clear();
+    this.samples = [];
+    this.windowFrom = -Infinity;
+    this.lastEndT = null;
+    return flushed;
   }
 
-  update(ev: FrameEval, lm: Pt[], now: number, minRange: number, faultFrames: number): RepResult | null {
-    if (!ev.ok) return null;
-    if (!ev.inPosition) {
-      this.reset();
-      return null;
+  update(ev: FrameEval, lm: Pt[], now: number, o: RepOptions): RepResult | null {
+    this.opts = o;
+    if (!ev.ok) {
+      return this.pending && now - this.pending.finishT > SETTLE_MAX_MS ? this.resolvePending() : null;
     }
+    if (!ev.inPosition) return this.reset();
+
+    this.samples.push({ t: now, a: ev.angle, y: ev.trackY ?? null, body: ev.bodyPx ?? null });
+    while (this.samples.length && now - this.samples[0].t > BUFFER_MS) this.samples.shift();
+
+    let out: RepResult | null = null;
+    if (this.pending && this.settled(now)) out = this.resolvePending();
 
     switch (this.phase) {
       case 'idle':
-        if (ev.extended) this.phase = 'top';
-        return null;
+        if (ev.extended) {
+          this.phase = 'top';
+          this.windowFrom = now;
+        }
+        break;
 
       case 'top':
-        if (!ev.extended && ev.angle < this.topAngle(ev) - minRange) {
+        if (ev.extended) this.topRef = ev.angle;
+        if (!ev.extended && ev.angle < this.topRef - o.minRange) {
+          out ??= this.resolvePending();
           this.begin(lm, now, true, ev.angle);
         }
-        return null;
+        break;
 
       case 'moving': {
-        this.trackFaults(ev, faultFrames);
+        this.trackFaults(ev, o.faultFrames);
         this.minAngle = Math.min(this.minAngle, ev.angle);
         if (ev.bottom) this.bottomReached = true;
         if (this.bottomReached) this.peakAfterBottom = Math.max(this.peakAfterBottom, ev.angle);
 
         if (ev.extended) {
-          const res = this.finish(now, true);
+          this.pending = { result: this.judge(now, true), from: this.repWindowStart(), finishT: now };
+          this.windowFrom = now;
           this.phase = 'top';
-          return res;
+          this.topRef = ev.angle;
+          break;
         }
 
-        // Came back up part of the way and started a new rep without locking out.
+        // Came back up part of the way and started a new rep without locking out:
+        // time it right away, the next rep is already under way.
         if (
           this.bottomReached &&
-          this.peakAfterBottom > this.minAngle + minRange &&
-          ev.angle < this.peakAfterBottom - minRange * 0.6
+          this.peakAfterBottom > this.minAngle + o.minRange &&
+          ev.angle < this.peakAfterBottom - o.minRange * 0.6
         ) {
-          const res = this.finish(now, false);
+          this.pending = { result: this.judge(now, false), from: this.repWindowStart(), finishT: now };
+          out ??= this.resolvePending();
+          this.windowFrom = now;
           this.begin(lm, now, false, ev.angle);
-          return res;
         }
-        return null;
+        break;
       }
     }
+    return out;
   }
 
-  /** Angle used as reference for "started moving": the extension angle seen at the top. */
-  private topRef = 180;
-  private topAngle(ev: FrameEval): number {
-    if (ev.extended) this.topRef = ev.angle;
-    return this.topRef;
+  private repWindowStart(): number {
+    return Math.max(this.windowFrom, this.start - PRE_ROLL_MS);
+  }
+
+  /** The joint has stopped moving after the rep (or we waited long enough). */
+  private settled(now: number): boolean {
+    const p = this.pending!;
+    const age = now - p.finishT;
+    if (age >= SETTLE_MAX_MS) return true;
+    if (age < SETTLE_MIN_MS) return false;
+    // Compare the average angle of the two halves of the last SETTLE_MIN_MS:
+    // averages ignore frame-to-frame jitter but still catch real movement.
+    const half = SETTLE_MIN_MS / 2;
+    const mean = (from: number, to: number) => {
+      const v = this.samples.filter((x) => now - x.t >= from && now - x.t < to).map((x) => x.a);
+      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+    };
+    const newer = mean(0, half), older = mean(half, SETTLE_MIN_MS);
+    return newer !== null && older !== null && Math.abs(newer - older) < STILL_DEG;
+  }
+
+  /** Times the pending rep and applies the tempo-based rule. */
+  private resolvePending(): RepResult | null {
+    const p = this.pending;
+    if (!p) return null;
+    this.pending = null;
+    const o = this.opts;
+    const window = this.samples.filter((x) => x.t >= p.from);
+    const res = o
+      ? computeTempo(window, {
+          flexIsEccentric: this.analyzer.flexIsEccentric,
+          heightM: o.heightM,
+          bodyRatio: this.analyzer.bodyRatio,
+          prevEndT: this.lastEndT,
+        })
+      : null;
+    this.lastEndT = res?.endT ?? null;
+
+    const r = p.result;
+    if (res) r.tempo = res.tempo;
+    if (o?.minEccentricSec != null && res && res.tempo.eccentricSec < o.minEccentricSec) {
+      r.reasons.push('fastEccentric');
+      r.valid = false;
+    }
+    return r;
   }
 
   private begin(lm: Pt[], now: number, fromTop: boolean, angle: number): void {
@@ -106,7 +204,7 @@ export class RepCounter {
     }
   }
 
-  private finish(now: number, lockedOut: boolean): RepResult {
+  private judge(now: number, lockedOut: boolean): RepResult {
     const reasons: string[] = [];
     if (!this.bottomReached) reasons.push(this.analyzer.noDepthFault);
     if (!this.startedFromTop) reasons.push('noStart');

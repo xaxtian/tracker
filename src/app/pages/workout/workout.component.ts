@@ -4,9 +4,12 @@ import { DecimalPipe, KeyValuePipe } from '@angular/common';
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import { Analyzer, FrameEval, createAnalyzer } from '../../analysis/analyzers';
 import { BANNER_MS, HudState, drawPose, poseColor } from '../../analysis/overlay';
-import { RepCounter } from '../../analysis/rep-counter';
+import { RepCounter, RepOptions } from '../../analysis/rep-counter';
+import { fmt2, tempoText, velocityLoss } from '../../analysis/set-stats';
 import { SetEndRules, SetTracker } from '../../analysis/set-tracker';
-import { EXERCISES, ExerciseId, FAULT_MESSAGES, FAULT_VOICE, Pt, RepResult, SetRecord } from '../../models/types';
+import {
+  AppSettings, EXERCISES, ExerciseId, FAULT_MESSAGES, FAULT_VOICE, PAUSE_LABELS, Pt, RepResult, RepTempo, SetRecord,
+} from '../../models/types';
 import { FeedbackService } from '../../services/feedback.service';
 import { HistoryService } from '../../services/history.service';
 import { PoseService } from '../../services/pose.service';
@@ -68,12 +71,29 @@ export class WorkoutComponent implements OnDestroy {
   readonly recSec = signal(0);
   readonly lastRecording = signal<RecordingMeta | null>(null);
   readonly formatClock = formatClock;
+  readonly fmt2 = fmt2;
+  readonly velocityLoss = velocityLoss;
+  readonly pauseLabels: { turn: string; between: string };
+  /** Tempo of the last rep, shown in the detail panel. */
+  readonly lastTempo = signal<RepTempo | null>(null);
+  /** Velocity loss of the current set, %. */
+  readonly setVelLoss = signal<number | null>(null);
+  /** Frame rate delivered by the camera and frames actually analyzed per second. */
+  readonly cameraFps = signal<number | null>(null);
+  readonly analysisFps = signal<number | null>(null);
 
   private analyzer: Analyzer;
   private counter: RepCounter;
   private tracker: SetTracker;
   private stream: MediaStream | null = null;
   private raf = 0;
+  private vfcHandle = 0;
+  private looping = false;
+  private readonly useVfc = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+  private frameOffset: number | null = null;
+  private lastFrameT = 0;
+  private fpsAvg = 0;
+  private fpsShownAt = 0;
   private lastVideoTime = -1;
   private smoothed: Pt[] | null = null;
   private repId = 0;
@@ -87,6 +107,7 @@ export class WorkoutComponent implements OnDestroy {
     this.exercise = id in EXERCISES ? id : 'squat';
     if (!(id in EXERCISES)) void this.router.navigate(['/']);
     this.info = EXERCISES[this.exercise];
+    this.pauseLabels = PAUSE_LABELS[this.exercise];
     this.analyzer = createAnalyzer(this.exercise);
     this.counter = new RepCounter(this.analyzer);
     this.tracker = new SetTracker(this.exercise);
@@ -103,9 +124,7 @@ export class WorkoutComponent implements OnDestroy {
     try {
       await Promise.all([this.pose.init(this.settings().general.model), this.openCamera()]);
       this.status.set('running');
-      this.lastVideoTime = -1;
-      cancelAnimationFrame(this.raf);
-      this.raf = requestAnimationFrame(this.loop);
+      this.startLoop();
       if (this.settings().general.autoRecord && this.canRecord) await this.startRecording();
     } catch (e) {
       this.stopCamera();
@@ -115,9 +134,10 @@ export class WorkoutComponent implements OnDestroy {
   }
 
   async stop(): Promise<void> {
+    this.flushRep();
     this.endSet();
     await this.stopRecording();
-    cancelAnimationFrame(this.raf);
+    this.stopLoop();
     this.stopCamera();
     this.counter.reset();
     this.status.set('off');
@@ -178,11 +198,12 @@ export class WorkoutComponent implements OnDestroy {
     if (this.status() !== 'running') return;
     this.stopCamera();
     // The view changes completely: restart the rep in progress (the set is kept).
-    this.counter.reset();
+    this.flushRep();
     try {
       await this.openCamera();
+      this.startLoop();
     } catch (e) {
-      cancelAnimationFrame(this.raf);
+      this.stopLoop();
       this.status.set('error');
       this.error.set(this.describeError(e));
     }
@@ -214,7 +235,11 @@ export class WorkoutComponent implements OnDestroy {
 
   private async openCamera(): Promise<void> {
     const video = this.videoRef().nativeElement;
-    const size = { width: { ideal: 1280 }, height: { ideal: 720 } };
+    const size = {
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      frameRate: { ideal: this.settings().general.highFps ? 60 : 30 },
+    };
     const id = this.deviceId();
     const attempts: MediaTrackConstraints[] = id
       ? [{ ...size, deviceId: { exact: id } }]
@@ -238,6 +263,7 @@ export class WorkoutComponent implements OnDestroy {
     const s = this.stream.getVideoTracks()[0]?.getSettings();
     if (s?.facingMode === 'user' || s?.facingMode === 'environment') this.facing.set(s.facingMode);
     if (s?.deviceId) this.deviceId.set(s.deviceId);
+    this.cameraFps.set(s?.frameRate ? Math.round(s.frameRate) : null);
     this.saveCameraChoice();
     void this.listCameras();
 
@@ -280,22 +306,67 @@ export class WorkoutComponent implements OnDestroy {
     this.smoothed = null;
   }
 
-  private loop = (): void => {
-    this.raf = requestAnimationFrame(this.loop);
+  private startLoop(): void {
+    this.stopLoop();
+    this.looping = true;
+    this.lastVideoTime = -1;
+    this.frameOffset = null;
+    this.lastFrameT = 0;
+    this.fpsAvg = 0;
+    this.schedule();
+  }
+
+  private stopLoop(): void {
+    this.looping = false;
+    cancelAnimationFrame(this.raf);
+    if (this.vfcHandle) this.videoRef().nativeElement.cancelVideoFrameCallback(this.vfcHandle);
+    this.vfcHandle = 0;
+  }
+
+  /**
+   * Runs once per camera frame. requestVideoFrameCallback gives the real
+   * timestamp of each frame, which is what makes phase timing precise.
+   */
+  private schedule(): void {
+    if (!this.looping) return;
     const video = this.videoRef().nativeElement;
-    if (video.readyState < 2 || video.currentTime === this.lastVideoTime) return;
-    this.lastVideoTime = video.currentTime;
+    if (this.useVfc) {
+      this.vfcHandle = video.requestVideoFrameCallback((_now, meta) => this.onFrame(this.frameTime(meta)));
+    } else {
+      this.raf = requestAnimationFrame(() => this.onFrame(performance.now()));
+    }
+  }
+
+  /** Frame time on the performance clock (ms). */
+  private frameTime(meta: VideoFrameCallbackMetadata): number {
+    const now = performance.now();
+    if (meta.captureTime && Math.abs(now - meta.captureTime) < 1000) return meta.captureTime;
+    const media = meta.mediaTime * 1000;
+    if (this.frameOffset === null || Math.abs(media + this.frameOffset - now) > 1000) this.frameOffset = now - media;
+    return media + this.frameOffset;
+  }
+
+  private onFrame(frameT: number): void {
+    this.schedule();
+    const video = this.videoRef().nativeElement;
+    if (video.readyState < 2) return;
+    if (!this.useVfc) {
+      if (video.currentTime === this.lastVideoTime) return;
+      this.lastVideoTime = video.currentTime;
+    }
+    if (frameT <= this.lastFrameT) return;
+    this.measureFps(frameT);
 
     const s = this.settings();
-    const now = Date.now();
-    const raw = this.pose.detect(video, performance.now());
+    const now = performance.timeOrigin + frameT;
+    const raw = this.pose.detect(video, frameT);
     const lm = raw ? this.toPixels(raw, video.videoWidth, video.videoHeight, s.general.smoothing) : null;
     if (!raw) this.smoothed = null;
 
     let ev: FrameEval | null = null;
     if (lm) {
       ev = this.analyzer.evaluate(lm, s);
-      const rep = this.counter.update(ev, lm, now, s.general.minRange, s.general.faultFrames);
+      const rep = this.counter.update(ev, lm, now, this.repOptions(s));
       if (rep) this.onRep(rep);
     }
 
@@ -309,7 +380,35 @@ export class WorkoutComponent implements OnDestroy {
     this.metrics.set(ev?.ok ? ev.metrics : {});
     this.hint.set(this.hintFor(!!raw, ev));
     this.draw(video, lm, ev);
-  };
+  }
+
+  private measureFps(frameT: number): void {
+    if (this.lastFrameT) {
+      const dt = frameT - this.lastFrameT;
+      if (dt > 0 && dt < 1000) this.fpsAvg = this.fpsAvg ? this.fpsAvg * 0.9 + (1000 / dt) * 0.1 : 1000 / dt;
+    }
+    this.lastFrameT = frameT;
+    if (frameT - this.fpsShownAt > 1000) {
+      this.fpsShownAt = frameT;
+      this.analysisFps.set(Math.round(this.fpsAvg));
+    }
+  }
+
+  /** Emits a finished rep that was still waiting to be timed. */
+  private flushRep(): void {
+    const r = this.counter.reset();
+    if (r) this.onRep(r);
+  }
+
+  private repOptions(s: AppSettings): RepOptions {
+    const ex = s[this.exercise];
+    return {
+      minRange: s.general.minRange,
+      faultFrames: s.general.faultFrames,
+      minEccentricSec: ex.checkEccentric ? ex.minEccentricSec : null,
+      heightM: s.general.userHeightCm / 100,
+    };
+  }
 
   private endRules(): SetEndRules {
     const g = this.settings().general;
@@ -331,17 +430,21 @@ export class WorkoutComponent implements OnDestroy {
       this.valid.set(0);
       this.invalid.set(0);
     }
+    const reps = this.tracker.current?.reps ?? [];
+    this.lastTempo.set(reps[reps.length - 1]?.tempo ?? null);
+    this.setVelLoss.set(velocityLoss(reps));
+    const tempo = tempoText(rep.tempo);
     const g = this.settings().general;
     if (rep.valid) {
       this.valid.update((n) => n + 1);
-      this.lastRep.set({ ok: true, text: `Repetición ${this.valid()}`, id: ++this.repId });
+      this.lastRep.set({ ok: true, text: `Repetición ${this.valid()}` + (tempo ? ` · ${tempo}` : ''), id: ++this.repId });
       this.toastAt = Date.now();
       if (g.voice) this.fb.speak(String(this.valid()));
     } else {
       this.invalid.update((n) => n + 1);
       this.lastRep.set({
         ok: false,
-        text: rep.reasons.map((r) => FAULT_MESSAGES[r] ?? r).join(' · '),
+        text: rep.reasons.map((r) => FAULT_MESSAGES[r] ?? r).join(' · ') + (tempo ? ` (${tempo})` : ''),
         id: ++this.repId,
       });
       this.toastAt = Date.now();

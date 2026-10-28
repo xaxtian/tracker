@@ -1,8 +1,9 @@
 import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { TempoAverages, fmt2, tempoAverages, velocityLoss } from '../../analysis/set-stats';
 import { RecordingMeta, VideoStoreService } from '../../services/video-store.service';
 import { RecordingPlayerComponent } from '../videos/recording-player.component';
-import { EXERCISES, ExerciseId, FAULT_MESSAGES, SetRecord } from '../../models/types';
+import { EXERCISES, ExerciseId, FAULT_MESSAGES, PAUSE_LABELS, SetRecord } from '../../models/types';
 import { HistoryService } from '../../services/history.service';
 
 interface ExerciseGroup {
@@ -20,13 +21,15 @@ interface DayGroup {
 
 @Component({
   selector: 'app-history',
-  imports: [DatePipe, RecordingPlayerComponent],
+  imports: [DatePipe, DecimalPipe, RecordingPlayerComponent],
   templateUrl: './history.component.html',
   styleUrl: './history.component.scss',
 })
 export class HistoryComponent implements OnDestroy {
   private history = inject(HistoryService);
   private videos = inject(VideoStoreService);
+  readonly expanded = signal<string | null>(null);
+  readonly fmt2 = fmt2;
   readonly playing = signal<{ set: SetRecord; meta: RecordingMeta } | null>(null);
   readonly videoIds = computed(() => new Set(this.videos.recordings().map((r) => r.id)));
   readonly ex = EXERCISES;
@@ -64,6 +67,31 @@ export class HistoryComponent implements OnDestroy {
     for (const s of this.history.sets()) best[s.exercise] = Math.max(best[s.exercise] ?? 0, s.valid);
     return best;
   });
+
+  toggle(s: SetRecord): void {
+    this.expanded.update((id) => (id === s.id ? null : s.id));
+  }
+
+  avg(s: SetRecord): TempoAverages {
+    return tempoAverages(s.reps);
+  }
+
+  loss(s: SetRecord): number | null {
+    return velocityLoss(s.reps);
+  }
+
+  labels(ex: ExerciseId) {
+    return PAUSE_LABELS[ex];
+  }
+
+  faultList(reasons: string[]): string {
+    return reasons.map((r) => FAULT_MESSAGES[r] ?? r).join(' · ');
+  }
+
+  fpsOf(s: SetRecord): string {
+    const f = (s.reps ?? []).map((r) => r.tempo?.fps).filter((x): x is number => !!x);
+    return f.length ? String(Math.round(f.reduce((a, b) => a + b, 0) / f.length)) : '?';
+  }
 
   play(s: SetRecord): void {
     const meta = this.videos.recordings().find((r) => r.id === s.recordingId);

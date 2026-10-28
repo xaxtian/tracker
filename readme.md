@@ -27,6 +27,10 @@ El móvil solo da acceso a la cámara por HTTPS. Con `start:mobile` el certifica
   tras un tiempo sin repeticiones. La siguiente serie empieza sola.
 - **Ajustes**: todos los umbrales se pueden cambiar en la pantalla Ajustes y se guardan en el navegador.
 - **Historial**: series agrupadas por día y ejercicio, con motivos de las repeticiones no válidas. Exportable a JSON.
+- **Tempo y velocidad** ([tempo.ts](src/app/analysis/tempo.ts)): duración de la fase excéntrica, concéntrica y de las
+  pausas, y velocidad media/pico en m/s (escala calibrada con la altura del usuario y proporciones antropométricas).
+  Usa la marca de tiempo real de cada fotograma (requestVideoFrameCallback), suavizado centrado sin retraso y cruces de
+  velocidad interpolados entre fotogramas. Opcional: tiempo mínimo de bajada como criterio de repetición estricta.
 - **Vídeos** ([session-recorder.ts](src/app/services/session-recorder.ts)): graba la cámara con el esqueleto, el contador y
   los avisos dibujados encima (canvas + MediaRecorder). Se guardan en IndexedDB en trozos de 2 s, solo en el dispositivo.
   Cada serie queda marcada en el vídeo para saltar a ella; se pueden descargar o compartir (galería, WhatsApp…).

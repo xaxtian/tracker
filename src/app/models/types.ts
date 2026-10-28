@@ -1,4 +1,14 @@
+import type { RepTempo } from '../analysis/tempo';
+
+export type { RepTempo };
+
 export type ExerciseId = 'squat' | 'pushup' | 'pullup';
+
+/** Optional strictness rule shared by all exercises. */
+export interface EccentricRule {
+  checkEccentric: boolean;
+  minEccentricSec: number;
+}
 
 /** Landmark in pixel coordinates (x right, y down) with visibility 0..1. */
 export interface Pt {
@@ -7,7 +17,7 @@ export interface Pt {
   v: number;
 }
 
-export interface SquatSettings {
+export interface SquatSettings extends EccentricRule {
   topKneeAngle: number;
   depthMode: 'hipBelowKnee' | 'kneeAngle';
   depthOffset: number;
@@ -17,14 +27,14 @@ export interface SquatSettings {
   heelTolerance: number;
 }
 
-export interface PushupSettings {
+export interface PushupSettings extends EccentricRule {
   topElbowAngle: number;
   bottomElbowAngle: number;
   minBodyLineAngle: number;
   minKneeAngle: number;
 }
 
-export interface PullupSettings {
+export interface PullupSettings extends EccentricRule {
   hangElbowAngle: number;
   chinMargin: number;
   maxHipSwing: number;
@@ -42,6 +52,8 @@ export interface GeneralSettings {
   beep: boolean;
   showAngles: boolean;
   autoRecord: boolean;
+  highFps: boolean;
+  userHeightCm: number;
   model: 'lite' | 'full';
 }
 
@@ -59,6 +71,14 @@ export interface RepResult {
   reasons: string[];
   start: number;
   end: number;
+  tempo?: RepTempo;
+}
+
+/** A rep as stored in the history. */
+export interface RepRecord {
+  valid: boolean;
+  reasons: string[];
+  tempo?: RepTempo;
 }
 
 export interface SetRecord {
@@ -71,6 +91,8 @@ export interface SetRecord {
   /** Fault id -> times it invalidated a rep. */
   reasons: Record<string, number>;
   restBeforeSec: number | null;
+  /** Per-rep detail (sets recorded before tempo tracking don't have it). */
+  reps?: RepRecord[];
   /** Recording that contains this set, and where it starts in it. */
   recordingId?: string;
   videoOffsetSec?: number;
@@ -123,6 +145,8 @@ export const FAULT_MESSAGES: Record<string, string> = {
   // pullup
   pullupNoDepth: 'La barbilla no superó la barra',
   swing: 'Balanceo del cuerpo',
+  // tempo
+  fastEccentric: 'Bajada demasiado rápida',
   kip: 'Impulso con las piernas (kipping)',
 };
 
@@ -139,5 +163,13 @@ export const FAULT_VOICE: Record<string, string> = {
   kneesBent: 'rodillas',
   pullupNoDepth: 'barbilla arriba',
   swing: 'sin balanceo',
+  fastEccentric: 'baja más lento',
   kip: 'sin impulso',
+};
+
+/** Names of the two pauses, which depend on where the joint is flexed. */
+export const PAUSE_LABELS: Record<ExerciseId, { turn: string; between: string }> = {
+  squat: { turn: 'Pausa abajo', between: 'Pausa arriba' },
+  pushup: { turn: 'Pausa abajo', between: 'Pausa arriba' },
+  pullup: { turn: 'Pausa arriba', between: 'Pausa colgado' },
 };
